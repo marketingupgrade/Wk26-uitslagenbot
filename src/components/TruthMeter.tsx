@@ -112,16 +112,19 @@ export default function TruthMeter({
       animate={{ height: "auto", opacity: 1 }}
       exit={{ height: 0, opacity: 0 }}
       transition={{ type: "spring", stiffness: 260, damping: 30 }}
-      style={{ overflow: "hidden", borderBottom: "1px solid var(--line)" }}
+      style={{
+        overflow: "hidden",
+        borderBottom: "1px solid var(--line)",
+        padding: isMobile ? "6px var(--gutter)" : "8px var(--gutter)",
+      }}
     >
       <div
         style={{
           display: "flex",
           alignItems: "center",
           gap: isMobile ? 10 : 16,
-          maxWidth: 760,
+          maxWidth: "var(--content-max)",
           margin: "0 auto",
-          padding: isMobile ? "6px 14px" : "8px clamp(14px, 6vw, 80px)",
         }}
       >
         <div

@@ -9,6 +9,10 @@
   --cream: #f4f7f2;
   --line: rgba(255, 255, 255, 0.12);
 
+  /* Gedeelde layout-tokens zodat alle secties op dezelfde kolom uitlijnen. */
+  --content-max: 760px;
+  --gutter: clamp(14px, 6vw, 80px);
+
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color-scheme: dark;
 }

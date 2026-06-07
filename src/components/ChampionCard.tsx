@@ -10,7 +10,6 @@ export default function ChampionCard({ result }: { result: ChampionResult }) {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ type: "spring", stiffness: 200, damping: 22 }}
       style={{
-        marginTop: 6,
         borderRadius: 20,
         overflow: "hidden",
         border: "1px solid rgba(212,175,55,0.55)",

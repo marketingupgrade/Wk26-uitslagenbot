@@ -7,11 +7,28 @@ export type Sender = "bot" | "user";
 export default function ChatMessage({
   sender,
   children,
+  bare = false,
 }: {
   sender: Sender;
   children: ReactNode;
+  bare?: boolean;
 }) {
   const isBot = sender === "bot";
+
+  // "bare" = volle-breedte kaart (uitslag/kampioen): geen avatar, geen bubbel,
+  // strak uitgelijnd op de contentkolom.
+  if (bare) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 16, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: "spring", stiffness: 320, damping: 26 }}
+        style={{ width: "100%" }}
+      >
+        {children}
+      </motion.div>
+    );
+  }
   // Bot-tekst verschijnt "gedecodeerd" via het Scramble-effect.
   const body =
     isBot && typeof children === "string" ? (

@@ -30,7 +30,7 @@ type Step =
   | "champCalc"
   | "champResult";
 
-type Msg = { id: string; sender: "bot" | "user"; content: ReactNode };
+type Msg = { id: string; sender: "bot" | "user"; content: ReactNode; card?: boolean };
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const pick = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
@@ -79,6 +79,9 @@ export default function App() {
 
   const addBot = (content: ReactNode) =>
     setMessages((m) => [...m, { id: uid(), sender: "bot", content }]);
+  // Kaarten (uitslag/kampioen) vullen de volle kolombreedte i.p.v. een bubbel.
+  const addBotCard = (content: ReactNode) =>
+    setMessages((m) => [...m, { id: uid(), sender: "bot", content, card: true }]);
   const addUser = (content: ReactNode) =>
     setMessages((m) => [...m, { id: uid(), sender: "user", content }]);
 
@@ -189,7 +192,7 @@ export default function App() {
     setTyping(true);
     await wait(900);
     setTyping(false);
-    addBot(<ResultCard result={result} />);
+    addBotCard(<ResultCard result={result} />);
     setStep("result");
   }
 
@@ -240,7 +243,7 @@ export default function App() {
     setTyping(true);
     await wait(900);
     setTyping(false);
-    addBot(<ChampionCard result={champ} />);
+    addBotCard(<ChampionCard result={champ} />);
     setStep("champResult");
   }
 
@@ -290,16 +293,16 @@ export default function App() {
             style={{
               flex: 1,
               overflowY: "auto",
-              padding: "22px clamp(14px, 6vw, 80px)",
+              padding: "22px var(--gutter)",
               display: "flex",
               flexDirection: "column",
               gap: 14,
             }}
           >
-            <div style={{ maxWidth: 760, width: "100%", margin: "0 auto", display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ maxWidth: "var(--content-max)", width: "100%", margin: "0 auto", display: "flex", flexDirection: "column", gap: 14 }}>
               <AnimatePresence initial={false}>
                 {messages.map((m) => (
-                  <ChatMessage key={m.id} sender={m.sender}>
+                  <ChatMessage key={m.id} sender={m.sender} bare={m.card}>
                     {m.content}
                   </ChatMessage>
                 ))}
@@ -318,10 +321,10 @@ export default function App() {
               borderTop: "1px solid var(--line)",
               background: "rgba(5,48,21,0.5)",
               backdropFilter: "blur(8px)",
-              padding: "14px clamp(14px, 6vw, 80px)",
+              padding: "14px var(--gutter)",
             }}
           >
-            <div style={{ maxWidth: 760, margin: "0 auto" }}>
+            <div style={{ maxWidth: "var(--content-max)", margin: "0 auto" }}>
               <InputZone
                 step={step}
                 qIndex={qIndex}
