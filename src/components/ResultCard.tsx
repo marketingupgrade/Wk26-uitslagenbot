@@ -142,8 +142,58 @@ export default function ResultCard({ result }: { result: MatchResult }) {
         >
           📊 <strong>Opmerkelijke statistiek:</strong> {result.weirdStat}
         </div>
+
+        <EnergyBlock energy={result.energy} />
       </div>
     </motion.div>
+  );
+}
+
+function fmt(n: number, digits = 0) {
+  return n.toLocaleString("nl-NL", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+}
+
+function EnergyBlock({ energy }: { energy: MatchResult["energy"] }) {
+  return (
+    <div
+      style={{
+        marginTop: 10,
+        padding: "11px 13px",
+        borderRadius: 10,
+        background: "rgba(0,0,0,0.25)",
+        border: "1px solid var(--line)",
+        fontSize: 13,
+        color: "var(--cream)",
+        lineHeight: 1.55,
+      }}
+    >
+      <div style={{ fontWeight: 700, marginBottom: 4 }}>
+        ⚡ Energievoetafdruk van deze uitslag
+      </div>
+      <div style={{ opacity: 0.85 }}>
+        {energy.breakdown.map((b) => `${b.label} ${fmt(b.wh, 2)} Wh`).join(" + ")}
+        {" = "}
+        <strong style={{ color: "var(--white)" }}>
+          {fmt(energy.perResultWh, 2)} Wh
+        </strong>{" "}
+        ({fmt(energy.perResultKwh, 5)} kWh).
+      </div>
+      <div style={{ marginTop: 6, opacity: 0.85 }}>
+        Eén BYD SUV naar NL importeren (productie + zeevracht) kost ±
+        <strong style={{ color: "var(--white)" }}> {fmt(energy.bydKwh)} kWh</strong>.
+        Je zou dus{" "}
+        <strong style={{ color: "var(--green-bright)" }}>
+          {fmt(Math.round(energy.ratio))}
+        </strong>{" "}
+        uitslagen moeten genereren om die ene auto te evenaren.
+      </div>
+      <div style={{ marginTop: 6, fontSize: 11.5, opacity: 0.55 }}>
+        Ratio ≈ 1 : {fmt(Math.round(energy.ratio))} (uitslag : BYD-import).
+      </div>
+    </div>
   );
 }
 
