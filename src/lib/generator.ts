@@ -1,4 +1,5 @@
 import type { Team } from "../data/teams";
+import { generateEnergy, type EnergyEstimate } from "./energy";
 
 // ────────────────────────────────────────────────────────────────────────────
 //  De Voorwaarts WK26-Uitslagengenerator™
@@ -16,6 +17,7 @@ export type MatchResult = {
   confidence: number; // 87 - 312 %
   manOfTheMatch: string;
   weirdStat: string;
+  energy: EnergyEstimate;
 };
 
 const rng = () => Math.random();
@@ -144,5 +146,6 @@ export function generateResult(
     confidence: between(87, 312),
     manOfTheMatch: pick(players),
     weirdStat: pick(weirdStats),
+    energy: generateEnergy(),
   };
 }
