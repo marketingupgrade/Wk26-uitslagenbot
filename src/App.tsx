@@ -3,13 +3,16 @@ import { AnimatePresence, motion } from "motion/react";
 import Header from "./components/Header";
 import ChatMessage from "./components/ChatMessage";
 import TypingDots from "./components/TypingDots";
-import TeamPicker from "./components/TeamPicker";
+import MatchPicker, { type PickedMatch } from "./components/MatchPicker";
 import ResultCard from "./components/ResultCard";
+import ChampionCard from "./components/ChampionCard";
 import TruthMeter from "./components/TruthMeter";
-import { teams, type Team } from "./data/teams";
+import { type Team } from "./data/teams";
 import { generateResult } from "./lib/generator";
+import { generateChampion } from "./lib/champion";
 import {
   generateQuestions,
+  generateChampionQuestions,
   randomQuestionCount,
   buildTruthSteps,
   reactionForProgress,
@@ -19,11 +22,13 @@ import {
 
 type Step =
   | "boot"
-  | "pickHome"
-  | "pickAway"
+  | "pickMatch"
   | "questions"
   | "calculating"
-  | "result";
+  | "result"
+  | "champQuestions"
+  | "champCalc"
+  | "champResult";
 
 type Msg = { id: string; sender: "bot" | "user"; content: ReactNode };
 
@@ -32,17 +37,13 @@ const pick = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
 let _id = 0;
 const uid = () => `m${_id++}`;
 
-const homeReactions = [
-  (t: Team) =>
-    `${t.name}? Gedurfd. Mijn tante koos ooit hetzelfde en die praat nu alleen nog met planten.`,
-  (t: Team) => `Genoteerd: ${t.name}. Ik voel meteen spanning. Of dat is de lunch.`,
-  (t: Team) => `${t.name}, oké. Sterke keuze voor iemand met die specifieke energie.`,
-];
-const awayReactions = [
-  (t: Team) =>
-    `Tegen ${t.name}? Hmm. De sterren staan ongemakkelijk, maar dat doen ze altijd.`,
-  (t: Team) => `${t.name} als tegenstander. Klassiek. Roekeloos. Ik hou ervan.`,
-  (t: Team) => `Aha, ${t.name}. Mijn modellen beginnen al stilletjes te huilen.`,
+const matchReactions = [
+  (m: PickedMatch) =>
+    `${m.home.name} - ${m.away.name}, ${m.date} in ${m.location}. Gedurfde keuze uit het officiële schema. Mijn tante koos ooit hetzelfde duel en die praat nu alleen nog met planten.`,
+  (m: PickedMatch) =>
+    `Genoteerd: ${m.home.name} - ${m.away.name} (${m.round}). Ik voel meteen spanning. Of dat is de lunch.`,
+  (m: PickedMatch) =>
+    `Aha, ${m.home.name} - ${m.away.name} om ${m.time}. Klassiek. Roekeloos. Mijn modellen beginnen al stilletjes te huilen.`,
 ];
 const calcLines = [
   "Oké. Genoeg onzin. Nu de échte onzin.",
@@ -50,6 +51,12 @@ const calcLines = [
   "Kruisverwijzing met de stand van de maan en jouw antwoorden…",
   "Negeren van alle bestaande voetbalkennis… klaar.",
   "Berekening voltooid. Je gaat dit niet leuk vinden. Ik wel.",
+];
+const champCalcLines = [
+  "Doorrekenen naar de eindzege… alle 104 duels simuleren in 0,0 seconden.",
+  "Ik gooi de poule-indeling, de logica en een dobbelsteen in één blender…",
+  "Verzin nu een doelsaldo dat nergens op slaat maar prachtig oogt…",
+  "De wereldkampioen is bepaald. Volstrekt willekeurig. Volledig definitief.",
 ];
 
 export default function App() {
@@ -63,9 +70,12 @@ export default function App() {
   const [sessionQuestions, setSessionQuestions] = useState<Question[]>([]);
   const [truthSteps, setTruthSteps] = useState<TruthStep[]>([]);
   const [meterStep, setMeterStep] = useState(0); // aantal beantwoorde vragen
+  const [champQuestions, setChampQuestions] = useState<Question[]>([]);
+  const [champIndex, setChampIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const booted = useRef(false);
   const qsRef = useRef<Question[]>([]); // synchrone toegang in de async-flow
+  const champQsRef = useRef<Question[]>([]);
 
   const addBot = (content: ReactNode) =>
     setMessages((m) => [...m, { id: uid(), sender: "bot", content }]);
@@ -113,34 +123,28 @@ export default function App() {
       await botSay(
         "Eerst de formaliteiten, dan een reeks zeer belangrijke en volledig onbelangrijke vragen. Daarna: de waarheid.",
       );
-      await botSay("Kies de THUISPLOEG. Denk goed na. Of niet. Maakt niet uit.");
-      setStep("pickHome");
+      await botSay(
+        "Kies een WEDSTRIJD uit het officiële WK26-speelschema. Eerst een ronde, dan het duel. Denk goed na. Of niet. Maakt niet uit.",
+      );
+      setStep("pickMatch");
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function handlePickHome(t: Team) {
-    setHome(t);
+  async function handlePickMatch(m: PickedMatch) {
+    setHome(m.home);
+    setAway(m.away);
     addUser(
       <span>
-        {t.flag} {t.name}
+        {m.home.flag} {m.home.name} — {m.away.flag} {m.away.name}
+        <span style={{ opacity: 0.6, fontSize: 12 }}>
+          {" "}
+          ({m.date} · {m.time} · {m.location})
+        </span>
       </span>,
     );
     setStep("boot");
-    await botSay(pick(homeReactions)(t));
-    await botSay("En nu de UITPLOEG. De tegenstander. Het lijdend voorwerp.");
-    setStep("pickAway");
-  }
-
-  async function handlePickAway(t: Team) {
-    setAway(t);
-    addUser(
-      <span>
-        {t.flag} {t.name}
-      </span>,
-    );
-    setStep("boot");
-    await botSay(pick(awayReactions)(t));
+    await botSay(pick(matchReactions)(m));
     await botSay(
       `Mooi. Nu ${qsRef.current.length} zeer belangrijke vragen die nergens over gaan. Vertrouw het proces.`,
     );
@@ -189,19 +193,81 @@ export default function App() {
     setStep("result");
   }
 
+  // ── Vervolg: doorrekenen naar de wereldkampioen ───────────────────────────
+  async function startChampion() {
+    const qs = generateChampionQuestions();
+    champQsRef.current = qs;
+    setChampQuestions(qs);
+    setChampIndex(0);
+    setStep("boot");
+    await botSay(
+      "Uitstekend. Maar één duel is kinderspel. Laten we dóórrekenen naar de absolute eindzege: de wereldkampioen.",
+    );
+    await botSay("Nog 3 beslissende vragen. Het hele toernooi hangt ervan af. Niet echt, maar toch.");
+    await askChampQuestion(0);
+  }
+
+  async function askChampQuestion(i: number) {
+    const qs = champQsRef.current;
+    setStep("boot");
+    await botSay(qs[i].prompt);
+    setChampIndex(i);
+    setStep("champQuestions");
+  }
+
+  async function handleChampChoice(label: string, vibe: string) {
+    const qs = champQsRef.current;
+    const q = qs[champIndex];
+    addUser(label);
+    const next = { ...answers, [q.id]: vibe };
+    setAnswers(next);
+    const answered = champIndex + 1;
+    setStep("boot");
+    await botSay(reactionForProgress(answered / qs.length), 600);
+    if (answered < qs.length) {
+      await askChampQuestion(answered);
+    } else {
+      await runChampionCalc(next);
+    }
+  }
+
+  async function runChampionCalc(finalAnswers: Record<string, string>) {
+    setStep("champCalc");
+    for (const line of champCalcLines) {
+      await botSay(line, 700);
+    }
+    const champ = generateChampion(finalAnswers);
+    setTyping(true);
+    await wait(900);
+    setTyping(false);
+    addBot(<ChampionCard result={champ} />);
+    setStep("champResult");
+  }
+
   async function restart() {
     setMessages([]);
     setHome(null);
     setAway(null);
     setStep("boot");
+    setChampQuestions([]);
+    setChampIndex(0);
+    champQsRef.current = [];
     newSession();
-    await botSay("Daar zijn we weer. Nog steeds 0% nauwkeurig. Kies de THUISPLOEG.", 500);
-    setStep("pickHome");
+    await botSay(
+      "Daar zijn we weer. Nog steeds 0% nauwkeurig. Kies een wedstrijd uit het schema.",
+      500,
+    );
+    setStep("pickMatch");
   }
 
   const showMeter =
     truthSteps.length > 0 &&
-    (step === "questions" || step === "calculating" || step === "result");
+    (step === "questions" ||
+      step === "calculating" ||
+      step === "result" ||
+      step === "champQuestions" ||
+      step === "champCalc" ||
+      step === "champResult");
   const meter = truthSteps[Math.min(meterStep, truthSteps.length - 1)];
 
   return (
@@ -258,13 +324,14 @@ export default function App() {
             <div style={{ maxWidth: 760, margin: "0 auto" }}>
               <InputZone
                 step={step}
-                home={home}
-                away={away}
                 qIndex={qIndex}
                 questions={sessionQuestions}
-                onPickHome={handlePickHome}
-                onPickAway={handlePickAway}
+                champIndex={champIndex}
+                champQuestions={champQuestions}
+                onPickMatch={handlePickMatch}
                 onChoice={handleChoice}
+                onChampChoice={handleChampChoice}
+                onStartChampion={startChampion}
                 onRestart={restart}
               />
             </div>
@@ -277,38 +344,40 @@ export default function App() {
 
 function InputZone({
   step,
-  home,
-  away,
   qIndex,
   questions,
-  onPickHome,
-  onPickAway,
+  champIndex,
+  champQuestions,
+  onPickMatch,
   onChoice,
+  onChampChoice,
+  onStartChampion,
   onRestart,
 }: {
   step: Step;
-  home: Team | null;
-  away: Team | null;
   qIndex: number;
   questions: Question[];
-  onPickHome: (t: Team) => void;
-  onPickAway: (t: Team) => void;
+  champIndex: number;
+  champQuestions: Question[];
+  onPickMatch: (m: PickedMatch) => void;
   onChoice: (label: string, vibe: string) => void;
+  onChampChoice: (label: string, vibe: string) => void;
+  onStartChampion: () => void;
   onRestart: () => void;
 }) {
-  if (step === "pickHome")
-    return <TeamPicker teams={teams} exclude={away} onPick={onPickHome} />;
-  if (step === "pickAway")
-    return <TeamPicker teams={teams} exclude={home} onPick={onPickAway} />;
-  if (step === "questions") {
-    const q = questions[qIndex];
+  if (step === "pickMatch") return <MatchPicker onPick={onPickMatch} />;
+
+  if (step === "questions" || step === "champQuestions") {
+    const isChamp = step === "champQuestions";
+    const q = isChamp ? champQuestions[champIndex] : questions[qIndex];
     if (!q) return null;
+    const handle = isChamp ? onChampChoice : onChoice;
     return (
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {q.choices.map((c, i) => (
           <motion.button
             key={c.label}
-            onClick={() => onChoice(c.label, c.vibe)}
+            onClick={() => handle(c.label, c.vibe)}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 }}
@@ -330,7 +399,52 @@ function InputZone({
       </div>
     );
   }
+
   if (step === "result")
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <motion.button
+          onClick={onStartChampion}
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+          style={{
+            width: "100%",
+            padding: "13px",
+            borderRadius: 12,
+            background: "linear-gradient(135deg, #e9c45a, #b8860b)",
+            color: "#241a00",
+            fontWeight: 800,
+            fontSize: 15,
+            boxShadow: "0 8px 22px rgba(184,134,11,0.5)",
+          }}
+        >
+          🏆 Reken door naar de wereldkampioen (3 vragen)
+        </motion.button>
+        <motion.button
+          onClick={onRestart}
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+          style={{
+            width: "100%",
+            padding: "11px",
+            borderRadius: 12,
+            background: "rgba(22,163,74,0.18)",
+            border: "1px solid rgba(22,163,74,0.45)",
+            color: "var(--cream)",
+            fontWeight: 700,
+            fontSize: 14,
+          }}
+        >
+          🔁 Andere wedstrijd
+        </motion.button>
+      </div>
+    );
+
+  if (step === "champResult")
     return (
       <motion.button
         onClick={onRestart}
@@ -349,14 +463,14 @@ function InputZone({
           boxShadow: "0 8px 22px rgba(12,107,52,0.5)",
         }}
       >
-        🔁 Nog een volstrekt onbetrouwbare uitslag genereren
+        🔁 Nog een volstrekt onbetrouwbare voorspelling
       </motion.button>
     );
 
-  // boot / calculating → wachtindicatie
+  // boot / calculating / champCalc → wachtindicatie
   return (
     <div style={{ fontSize: 13, opacity: 0.55, textAlign: "center", padding: "4px 0" }}>
-      {step === "calculating"
+      {step === "calculating" || step === "champCalc"
         ? "De bot rekent… of doet alsof. Beide."
         : "Even geduld, de bot formuleert iets onverantwoords…"}
     </div>

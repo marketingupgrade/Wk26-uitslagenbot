@@ -152,6 +152,40 @@ export function generateQuestions(count: number): Question[] {
   });
 }
 
+// ── Vervolgvragen richting de wereldkampioen ───────────────────────────────
+// Drie extra vragen die "doorrekenen" naar de eindzege. Klinken episch,
+// betekenen exact even veel als de rest: niets.
+const championTemplates: ((p: {
+  object: string;
+  entity: string;
+  state: string;
+}) => string)[] = [
+  (p) => `Finalevraag 1/3: welke ploeg verdient de wereldtitel volgens ${p.object}?`,
+  (p) => `Finalevraag 2/3: als de beker kon praten, hoe ${p.state} zou hij zijn over ${p.object}?`,
+  (p) => `Finalevraag 3/3: ${p.entity} houdt de cup omhoog. Wat schreeuwt het stadion?`,
+  (p) => `Doorrekenend naar de eindzege: hoeveel weegt ${p.object} in jouw kampioensformule?`,
+  (p) => `Laatste ijking: wie tilt de beker het mooiste, ${p.entity} of ${p.object}?`,
+  (p) => `Beslissende factor: hoe ${p.state} mag een wereldkampioen zich voelen?`,
+];
+
+/** Genereer precies 3 vervolgvragen richting de wereldkampioen. */
+export function generateChampionQuestions(): Question[] {
+  const tpls = sample(championTemplates, 3);
+  return tpls.map((tpl, i) => {
+    const prompt = tpl({
+      object: pick(objects),
+      entity: pick(entities),
+      state: pick(states),
+    });
+    const nChoices = 3 + Math.floor(rng() * 2); // 3 of 4
+    return {
+      id: `c${i}`,
+      prompt,
+      choices: sample(choicePool, nChoices),
+    };
+  });
+}
+
 // ── Sentiment-opbouw voor de Waarheidsmeter ────────────────────────────────
 // Oplopende "tiers" van onwetend (rood) naar voetbalgod (groen). Labels worden
 // random gekozen binnen hun tier, dus elke sessie anders, maar de OPBOUW blijft
