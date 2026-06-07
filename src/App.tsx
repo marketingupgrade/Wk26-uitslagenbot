@@ -5,11 +5,9 @@ import ChatMessage from "./components/ChatMessage";
 import TypingDots from "./components/TypingDots";
 import TeamPicker from "./components/TeamPicker";
 import ResultCard from "./components/ResultCard";
-import ActivityFeed from "./components/ActivityFeed";
 import { teams, type Team } from "./data/teams";
 import { questions } from "./data/questions";
 import { generateResult } from "./lib/generator";
-import { activity } from "./lib/activity";
 
 type Step =
   | "boot"
@@ -89,7 +87,6 @@ export default function App() {
     if (booted.current) return;
     booted.current = true;
     (async () => {
-      activity.push({ kind: "system", text: "Uitslagenbot opgestart 🚀" });
       await botSay("Goedendag. Ik ben de officiële WK26 Uitslagenbot van v.v. Voorwaarts.", 700);
       await botSay(
         "Ik voorspel WK-uitslagen met een nauwkeurigheid van precies 0%, maar met een zelfvertrouwen van 312%.",
@@ -99,7 +96,6 @@ export default function App() {
       );
       await botSay("Kies de THUISPLOEG. Denk goed na. Of niet. Maakt niet uit.");
       setStep("pickHome");
-      activity.push({ kind: "bot", text: "Bot vraagt om de thuisploeg." });
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -111,12 +107,10 @@ export default function App() {
         {t.flag} {t.name}
       </span>,
     );
-    activity.push({ kind: "user", text: `Thuisploeg gekozen: ${t.name}` });
     setStep("boot");
     await botSay(pick(homeReactions)(t));
     await botSay("En nu de UITPLOEG. De tegenstander. Het lijdend voorwerp.");
     setStep("pickAway");
-    activity.push({ kind: "bot", text: "Bot vraagt om de uitploeg." });
   }
 
   async function handlePickAway(t: Team) {
@@ -126,7 +120,6 @@ export default function App() {
         {t.flag} {t.name}
       </span>,
     );
-    activity.push({ kind: "user", text: `Uitploeg gekozen: ${t.name}` });
     setStep("boot");
     await botSay(pick(awayReactions)(t));
     await botSay(
@@ -140,7 +133,6 @@ export default function App() {
     setStep("boot");
     await botSay(`Vraag ${i + 1}/${questions.length}. ${questions[i].prompt}`);
     setStep("questions");
-    activity.push({ kind: "bot", text: `Vraag ${i + 1}: ${questions[i].id}` });
   }
 
   async function handleChoice(label: string, vibe: string) {
@@ -148,8 +140,6 @@ export default function App() {
     addUser(label);
     const nextAnswers = { ...answers, [q.id]: vibe };
     setAnswers(nextAnswers);
-    activity.push({ kind: "user", text: `Antwoord: "${label}" → ${vibe}` });
-    activity.push({ kind: "chaos", text: `Waanzin-niveau stijgt (${vibe})` });
     setStep("boot");
     await botSay(pick(choiceReactions), 650);
 
@@ -164,15 +154,10 @@ export default function App() {
 
   async function runCalculation(finalAnswers: Record<string, string>) {
     setStep("calculating");
-    activity.push({ kind: "system", text: "Berekening gestart…" });
     for (const line of calcLines) {
       await botSay(line, 700);
     }
     const result = generateResult(home!, away!, finalAnswers);
-    activity.push({
-      kind: "result",
-      text: `UITSLAG: ${home!.name} ${result.homeScore}-${result.awayScore} ${away!.name}`,
-    });
     setTyping(true);
     await wait(900);
     setTyping(false);
@@ -187,7 +172,6 @@ export default function App() {
     setAnswers({});
     setQIndex(0);
     setStep("boot");
-    activity.push({ kind: "system", text: "Nieuwe waanzin gestart 🔄" });
     await botSay("Daar zijn we weer. Nog steeds 0% nauwkeurig. Kies de THUISPLOEG.", 500);
     setStep("pickHome");
   }
@@ -196,7 +180,7 @@ export default function App() {
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", position: "relative", zIndex: 1 }}>
       <Header />
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
-        {/* Chat kolom */}
+        {/* Chat kolom (volledige breedte) */}
         <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
           <div
             ref={scrollRef}
@@ -248,18 +232,7 @@ export default function App() {
             </div>
           </div>
         </main>
-
-        {/* Activity feed — verbergt zich op smalle schermen */}
-        <div className="feed-col">
-          <ActivityFeed />
-        </div>
       </div>
-
-      <style>{`
-        @media (max-width: 880px) {
-          .feed-col { display: none; }
-        }
-      `}</style>
     </div>
   );
 }

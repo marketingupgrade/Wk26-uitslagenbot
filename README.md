@@ -28,17 +28,12 @@ npm run build    # productiebuild
 | `src/data/teams.ts` | 48 WK26-landen (+ Voorwaarts als eregast) |
 | `src/data/questions.ts` | De absurde, niet-voetbal vragen |
 | `src/lib/generator.ts` | Genereert de onrealistische uitslag + onzin-onderbouwing |
-| `src/lib/activity.ts` | **Event-bus** — hier plug je later de live user-activity / "de bit" op aan |
 | `src/lib/theme.ts` | Voorwaarts-huisstijlkleuren |
 | `src/components/Scramble.tsx` | "Decodeer"-effect: bot-tekst scrambelt en klikt karakter-voor-karakter vast |
-| `src/components/` | Header, chatbubbels, teamkiezer, uitslagkaart, waanzin-meter |
+| `src/components/` | Header, chatbubbels, teamkiezer, uitslagkaart |
 
-## Uitbreidingspunten (voor jouw latere code)
+## Uitbreidingspunten
 
-- **`src/lib/activity.ts`** — losgekoppelde event-bus. Roep `activity.push({ kind, text })`
-  aan om gebeurtenissen te tonen, of `activity.subscribe(fn)` om ze naar een
-  backend / websocket te streamen. De `ActivityFeed` ("Waanzin-meter") rendert
-  alles automatisch.
 - **De vragen** staan los in `src/data/questions.ts`, de **onzin-templates** in
   `src/lib/generator.ts` — makkelijk uit te breiden.
 
