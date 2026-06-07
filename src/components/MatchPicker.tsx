@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { schedule, type ScheduledMatch } from "../data/schedule";
-import { resolveTeam, type Team } from "../data/teams";
+import { resolveTeam, teams, type Team } from "../data/teams";
 
 export type PickedMatch = {
   home: Team;
@@ -13,6 +13,27 @@ export type PickedMatch = {
   code?: string;
 };
 
+// Groepsfase = poules met bekende ploegen. Al het andere is knock-out met
+// placeholders ("Winnaar duel 101"); daar vullen we willekeurige deelnemers in.
+const isGroupRound = (name: string) => name.startsWith("Poule");
+
+// Twee verschillende ploegen per duel; over de hele ronde zoveel mogelijk
+// uniek door de lijst één keer te shufflen.
+function randomTeamsForRound(count: number): { home: Team; away: Team }[] {
+  const shuffled = [...teams].sort(() => Math.random() - 0.5);
+  const out: { home: Team; away: Team }[] = [];
+  let cursor = 0;
+  for (let i = 0; i < count; i++) {
+    if (cursor + 1 >= shuffled.length) {
+      shuffled.sort(() => Math.random() - 0.5);
+      cursor = 0;
+    }
+    out.push({ home: shuffled[cursor], away: shuffled[cursor + 1] });
+    cursor += 2;
+  }
+  return out;
+}
+
 export default function MatchPicker({
   onPick,
 }: {
@@ -20,6 +41,14 @@ export default function MatchPicker({
 }) {
   // Eerst een ronde kiezen, dan een wedstrijd. Houdt het behapbaar op mobiel.
   const [roundIndex, setRoundIndex] = useState<number | null>(null);
+
+  // Stabiele random-loting voor de gekozen knock-out-ronde.
+  const drawn = useMemo(() => {
+    if (roundIndex === null) return null;
+    const round = schedule[roundIndex];
+    if (isGroupRound(round.name)) return null;
+    return randomTeamsForRound(round.matches.length);
+  }, [roundIndex]);
 
   if (roundIndex === null) {
     return (
@@ -64,15 +93,23 @@ export default function MatchPicker({
 
   const round = schedule[roundIndex];
 
-  const makePicked = (m: ScheduledMatch): PickedMatch => ({
-    home: resolveTeam(m.home),
-    away: resolveTeam(m.away),
-    round: round.name,
-    date: m.date,
-    time: m.time,
-    location: m.location,
-    code: m.code,
-  });
+  // Resolveer de ploegen voor een duel: poules gebruiken de echte namen,
+  // knock-out gebruikt de ingelote willekeurige deelnemers.
+  const teamsFor = (m: ScheduledMatch, i: number): { home: Team; away: Team } =>
+    drawn ? drawn[i] : { home: resolveTeam(m.home), away: resolveTeam(m.away) };
+
+  const makePicked = (m: ScheduledMatch, i: number): PickedMatch => {
+    const { home, away } = teamsFor(m, i);
+    return {
+      home,
+      away,
+      round: round.name,
+      date: m.date,
+      time: m.time,
+      location: m.location,
+      code: m.code,
+    };
+  };
 
   return (
     <motion.div
@@ -106,12 +143,11 @@ export default function MatchPicker({
         }}
       >
         {round.matches.map((m, i) => {
-          const h = resolveTeam(m.home);
-          const a = resolveTeam(m.away);
+          const { home: h, away: a } = teamsFor(m, i);
           return (
             <motion.button
               key={`${m.date}-${m.time}-${m.home}-${m.away}`}
-              onClick={() => onPick(makePicked(m))}
+              onClick={() => onPick(makePicked(m, i))}
               initial={{ opacity: 0, scale: 0.97 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: i * 0.02 }}
