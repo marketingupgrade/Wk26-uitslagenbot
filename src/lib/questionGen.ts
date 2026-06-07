@@ -116,6 +116,16 @@ const whens = [
   "als het motregent",
   "buiten het seizoen",
   "tussen 14:00 en 14:03",
+  "op een woensdagavond",
+  "vlak voor sluitingstijd",
+  "alleen in schrikkeljaren",
+  "tijdens de aftrap",
+  "na het derde fluitsignaal",
+  "als de tribune zwijgt",
+  "rond het avondeten",
+  "bij windkracht 6",
+  "op blote voeten",
+  "tijdens de rust",
 ];
 
 const intensities = [
@@ -127,10 +137,21 @@ const intensities = [
   "spirituele",
   "kosmische",
   "wetenschappelijk bewezen",
+  "juridisch bindende",
+  "bovennatuurlijke",
+  "matig verontrustende",
+  "ongekende",
+  "stille",
+  "explosieve",
+  "diplomatieke",
+  "bescheiden",
 ];
 
-const numberWords = ["drie", "zeven", "elf", "nul", "veertien", "honderd", "vier"];
-const digits = ["3", "7", "9", "4", "11"];
+const numberWords = [
+  "drie", "zeven", "elf", "nul", "veertien", "honderd", "vier",
+  "twee", "vijf", "negen", "zes", "twaalf", "duizend", "min één",
+];
+const digits = ["3", "7", "9", "4", "11", "2", "5", "6", "8", "13", "42"];
 
 const vibeAdjs = [
   "voorwaardelijk",
@@ -197,6 +218,18 @@ const answerTemplates: ((p: Slots) => string)[] = [
   (p) => `${cap(p.intensity)} ja. Definitief.`,
   (p) => `Vraag dat maar aan ${p.entity}.`,
   (p) => `${cap(p.state)}, en daar blijf ik bij.`,
+  (p) => `Absoluut. ${cap(p.state)} zelfs.`,
+  (p) => `Pas ${p.when}, geen seconde eerder.`,
+  (p) => `Met de hulp van ${p.entity}.`,
+  (p) => `${cap(p.digit)} keer. Vraag niet waarom.`,
+  (p) => `Net zo ${p.state} als ${p.object}.`,
+  (p) => `Nee, tenzij ${p.entity} erbij is.`,
+  (p) => `Volmondig ja, ${p.when}.`,
+  (p) => `Ik raadpleeg eerst ${p.object}.`,
+  (p) => `${cap(p.object)}. Logisch toch?`,
+  (p) => `Alleen ${p.when}, en met tegenzin.`,
+  (p) => `Dat bewaar ik voor ${p.entity}.`,
+  (p) => `${cap(p.number)} keer ja, ${p.number} keer nee.`,
 ];
 
 function answerSlots(): Slots {
@@ -211,17 +244,35 @@ function answerSlots(): Slots {
   };
 }
 
-/** Genereer `n` verse, willekeurige antwoordopties met opgebouwde vibe. */
-export function generateChoices(n: number): Choice[] {
-  const tpls = sample(answerTemplates, Math.min(n, answerTemplates.length));
-  while (tpls.length < n) tpls.push(pick(answerTemplates));
-  const seen = new Set<string>();
+/**
+ * Genereer `n` verse antwoordopties.
+ * `used` (labels) en `usedTpl` (template-indexen) worden over de héle sessie
+ * gedeeld, zodat opties niet tussen vragen herhalen en zoveel mogelijk
+ * verschillende zinsbouw gebruiken.
+ */
+export function generateChoices(
+  n: number,
+  used: Set<string> = new Set(),
+  usedTpl: Set<number> = new Set(),
+): Choice[] {
   const out: Choice[] = [];
-  for (const tpl of tpls) {
-    let label = tpl(answerSlots());
-    let guard = 0;
-    while (seen.has(label) && guard++ < 6) label = tpl(answerSlots());
-    seen.add(label);
+  for (let k = 0; k < n; k++) {
+    let label = "";
+    let chosenIdx = -1;
+    for (let attempt = 0; attempt < 40; attempt++) {
+      // Kies bij voorkeur een template die nog niet aan bod kwam.
+      const fresh = answerTemplates
+        .map((_, i) => i)
+        .filter((i) => !usedTpl.has(i));
+      const pool = fresh.length ? fresh : answerTemplates.map((_, i) => i);
+      const idx = pool[Math.floor(rng() * pool.length)];
+      const candidate = answerTemplates[idx](answerSlots());
+      chosenIdx = idx;
+      label = candidate;
+      if (!used.has(candidate)) break;
+    }
+    used.add(label);
+    if (chosenIdx >= 0) usedTpl.add(chosenIdx);
     out.push({ label, vibe: `${pick(vibeAdjs)} ${pick(vibeNouns)}` });
   }
   return out;
@@ -238,6 +289,10 @@ export function generateQuestions(count: number): Question[] {
   // Als count > aantal templates, vul aan met willekeurige templates.
   while (tpls.length < count) tpls.push(pick(templates));
 
+  // Gedeeld over de hele sessie: geen herhaalde antwoordopties tussen vragen.
+  const used = new Set<string>();
+  const usedTpl = new Set<number>();
+
   return tpls.map((tpl, i) => {
     const prompt = tpl({
       object: pick(objects),
@@ -250,7 +305,7 @@ export function generateQuestions(count: number): Question[] {
     return {
       id: `q${i}`,
       prompt,
-      choices: generateChoices(nChoices),
+      choices: generateChoices(nChoices, used, usedTpl),
     };
   });
 }
@@ -274,6 +329,8 @@ const championTemplates: ((p: {
 /** Genereer precies 3 vervolgvragen richting de wereldkampioen. */
 export function generateChampionQuestions(): Question[] {
   const tpls = sample(championTemplates, 3);
+  const used = new Set<string>();
+  const usedTpl = new Set<number>();
   return tpls.map((tpl, i) => {
     const prompt = tpl({
       object: pick(objects),
@@ -284,7 +341,7 @@ export function generateChampionQuestions(): Question[] {
     return {
       id: `c${i}`,
       prompt,
-      choices: generateChoices(nChoices),
+      choices: generateChoices(nChoices, used, usedTpl),
     };
   });
 }
