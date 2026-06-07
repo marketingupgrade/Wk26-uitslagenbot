@@ -25,6 +25,24 @@ body,
   height: 100%;
 }
 
+/* App-hoogte: vh-fallback, dan dvh zodat mobiele browserbalken niet afkappen. */
+.app-shell {
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* Voorkom horizontaal scrollen op smalle schermen. */
+html,
+body {
+  overflow-x: hidden;
+}
+
+/* Tekstselectie/zoom-gedrag op mobiel iets vriendelijker. */
+button {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
 body {
   background:
     radial-gradient(1200px 800px at 80% -10%, rgba(22, 163, 74, 0.22), transparent 60%),

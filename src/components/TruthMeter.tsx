@@ -3,6 +3,7 @@ import * as echarts from "echarts/core";
 import { GaugeChart } from "echarts/charts";
 import { CanvasRenderer } from "echarts/renderers";
 import { motion } from "motion/react";
+import { useIsMobile } from "../lib/useMediaQuery";
 
 echarts.use([GaugeChart, CanvasRenderer]);
 
@@ -25,16 +26,17 @@ export default function TruthMeter({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const chartRef = useRef<echarts.ECharts | null>(null);
+  const isMobile = useIsMobile();
 
-  // Init één keer.
+  // Init één keer; resize mee met de container (rotatie/breedte) via observer.
   useEffect(() => {
     if (!ref.current) return;
     const chart = echarts.init(ref.current, undefined, { renderer: "canvas" });
     chartRef.current = chart;
-    const onResize = () => chart.resize();
-    window.addEventListener("resize", onResize);
+    const ro = new ResizeObserver(() => chart.resize());
+    ro.observe(ref.current);
     return () => {
-      window.removeEventListener("resize", onResize);
+      ro.disconnect();
       chart.dispose();
       chartRef.current = null;
     };
@@ -125,13 +127,20 @@ export default function TruthMeter({
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 16,
+          gap: isMobile ? 10 : 16,
           maxWidth: 760,
           margin: "0 auto",
-          padding: "8px clamp(14px, 6vw, 80px)",
+          padding: isMobile ? "6px 14px" : "8px clamp(14px, 6vw, 80px)",
         }}
       >
-        <div ref={ref} style={{ width: 150, height: 120, flexShrink: 0 }} />
+        <div
+          ref={ref}
+          style={{
+            width: isMobile ? 110 : 150,
+            height: isMobile ? 92 : 120,
+            flexShrink: 0,
+          }}
+        />
         <div style={{ minWidth: 0 }}>
           <div
             style={{
@@ -146,7 +155,7 @@ export default function TruthMeter({
           </div>
           <div
             style={{
-              fontSize: 15,
+              fontSize: isMobile ? 14 : 15,
               fontWeight: 800,
               color: colorFor(value),
               marginTop: 4,

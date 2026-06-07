@@ -205,7 +205,10 @@ export default function App() {
   const meter = truthSteps[Math.min(meterStep, truthSteps.length - 1)];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", position: "relative", zIndex: 1 }}>
+    <div
+      className="app-shell"
+      style={{ display: "flex", flexDirection: "column", position: "relative", zIndex: 1 }}
+    >
       <Header />
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
         {/* Chat kolom (volledige breedte) */}

@@ -42,7 +42,7 @@ export default function ResultCard({ result }: { result: MatchResult }) {
       {/* Scorebord */}
       <div
         style={{
-          padding: "22px 18px",
+          padding: "clamp(16px, 5vw, 22px) clamp(12px, 4vw, 18px)",
           background:
             "linear-gradient(180deg, rgba(0,0,0,0.35), transparent)",
           textAlign: "center",
@@ -71,7 +71,7 @@ export default function ResultCard({ result }: { result: MatchResult }) {
           <Side flag={home.flag} name={home.name} />
           <div
             style={{
-              fontSize: 46,
+              fontSize: "clamp(30px, 11vw, 46px)",
               fontWeight: 900,
               fontVariantNumeric: "tabular-nums",
               color: "var(--white)",
@@ -80,7 +80,7 @@ export default function ResultCard({ result }: { result: MatchResult }) {
             }}
           >
             <Counter to={homeScore} />
-            <span style={{ opacity: 0.4, margin: "0 8px" }}>-</span>
+            <span style={{ opacity: 0.4, margin: "0 clamp(4px, 2vw, 8px)" }}>-</span>
             <Counter to={awayScore} />
           </div>
           <Side flag={away.flag} name={away.name} />
@@ -150,9 +150,17 @@ export default function ResultCard({ result }: { result: MatchResult }) {
 
 function Side({ flag, name }: { flag: string; name: string }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-      <span style={{ fontSize: 34 }}>{flag}</span>
-      <span style={{ fontSize: 13, fontWeight: 700, color: "var(--white)" }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, minWidth: 0 }}>
+      <span style={{ fontSize: "clamp(26px, 8vw, 34px)" }}>{flag}</span>
+      <span
+        style={{
+          fontSize: "clamp(11px, 3.2vw, 13px)",
+          fontWeight: 700,
+          color: "var(--white)",
+          textAlign: "center",
+          lineHeight: 1.2,
+        }}
+      >
         {name}
       </span>
     </div>

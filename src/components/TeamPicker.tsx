@@ -1,5 +1,6 @@
 import { motion } from "motion/react";
 import type { Team } from "../data/teams";
+import { useIsMobile } from "../lib/useMediaQuery";
 
 export default function TeamPicker({
   teams,
@@ -10,15 +11,22 @@ export default function TeamPicker({
   exclude?: Team | null;
   onPick: (t: Team) => void;
 }) {
+  const isMobile = useIsMobile();
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       style={{
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+        gridTemplateColumns: isMobile
+          ? "repeat(2, 1fr)"
+          : "repeat(auto-fill, minmax(140px, 1fr))",
         gap: 8,
         marginTop: 6,
+        // Beperk de hoogte zodat de lijst niet buiten de actiezone valt.
+        maxHeight: "min(46vh, 420px)",
+        overflowY: "auto",
+        paddingRight: 4,
       }}
     >
       {teams
