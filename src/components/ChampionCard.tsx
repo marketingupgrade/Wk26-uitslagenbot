@@ -73,7 +73,7 @@ export default function ChampionCard({ result }: { result: ChampionResult }) {
             marginBottom: 12,
           }}
         >
-          📈 12 verzonnen toernooistatistieken
+          📈 Datagedreven realiteit
         </div>
 
         <div
