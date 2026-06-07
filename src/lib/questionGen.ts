@@ -1,7 +1,8 @@
 // ────────────────────────────────────────────────────────────────────────────
 //  Procedurele vragen-generator.
-//  Geen vaste vragenlijst, geen database: elke sessie worden 5–7 hyper-
-//  sarcastische, volstrekt niet-voetbal vragen samengesteld uit woordbanken.
+//  Geen vaste vragenlijst: elke sessie worden 5–7 hyper-sarcastische,
+//  volstrekt niet-voetbal vragen samengesteld uit woordbanken. De antwoord-
+//  opties horen bij de vraag (zelfde onderwerp) — geen losse non-sequiturs.
 //  Daarnaast: een gestructureerde sentiment-opbouw voor de Waarheidsmeter.
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -10,6 +11,7 @@ export type Question = { id: string; prompt: string; choices: Choice[] };
 
 const rng = () => Math.random();
 const pick = <T,>(a: T[]): T => a[Math.floor(rng() * a.length)];
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 // Een set willekeurige, unieke elementen uit een array.
 function sample<T>(arr: T[], n: number): T[] {
@@ -80,202 +82,184 @@ const scaleHigh = [
   "een voltallig gospelkoor",
 ];
 
-// Templates met slots. {object} {entity} {state} {scaleA} {scaleB}
-const templates: ((p: {
+// Vibe-bouwstenen: interne 'sfeer' die de uitslag-onderbouwing voedt.
+const vibeAdjs = [
+  "voorwaardelijk", "ijskoud", "autoritair", "clandestien", "erfelijk",
+  "structureel", "spiritueel", "fatalistisch", "numerologisch", "thermisch",
+  "juridisch", "ongeneeslijk", "dreigend", "transparant", "veerkrachtig",
+  "ongebonden", "psychologisch", "mythisch",
+];
+const vibeNouns = [
+  "dominant", "briljant", "kalm", "chaotisch", "toegewijd", "explosief",
+  "helder", "twijfelend", "grandioos", "paniekerig", "ambitieus", "onverstoorbaar",
+];
+
+// ── Vraag-specs ─────────────────────────────────────────────────────────────
+// Elke spec bouwt zowel de vraag als een POOL passende antwoorden uit dezelfde
+// slots, zodat de opties echt over de vraag gaan.
+type Slots = {
   object: string;
   entity: string;
   state: string;
   scaleA: string;
   scaleB: string;
-}) => string)[] = [
-  (p) => `Op een schaal van ${p.scaleA} tot ${p.scaleB}: hoe ${p.state} voel jij je vandaag?`,
-  (p) => `Diep ademhalen. Dit bepaalt alles. Wat zou jij doen met ${p.object}?`,
-  (p) => `Snel, niet nadenken: welke relatie heb jij precies met ${p.object}?`,
-  (p) => `Stel: ${p.entity} kijkt jou recht aan en fluistert iets over ${p.object}. Wat fluistert ${p.entity}?`,
-  (p) => `Cruciale kwalificatievraag: hoe ${p.state} is ${p.object} volgens jou, héél eerlijk?`,
-  (p) => `Als ${p.entity} een ringtone had die afging tijdens ${p.object}, hoe erg is dat dan?`,
-  (p) => `Belangrijk en volledig onbelangrijk: hoeveel vertrouwen heb jij in ${p.object}?`,
-  (p) => `Eén vraag, het hele WK hangt ervan af: wat zegt ${p.object} over jou als mens?`,
-  (p) => `Hoe verhoudt jouw ochtendhumeur zich tot ${p.object}?`,
-  (p) => `Op welke precieze manier heeft ${p.object} jou ooit teleurgesteld?`,
-  (p) => `Als jij ${p.entity} was, zou je dan anders omgaan met ${p.object}?`,
-];
-
-// ── Procedurele antwoorden ──────────────────────────────────────────────────
-// Net als de vragen worden de antwoordopties élke keer vers samengesteld uit
-// woordbanken — geen vaste lijst. Elke keuze draagt een willekeurig opgebouwde
-// 'vibe' mee die de uitslag-onderbouwing voedt.
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-
-const whens = [
-  "op dinsdag",
-  "tijdens volle maan",
-  "voor de koffie",
-  "na het toetje",
-  "in even jaren",
-  "als het motregent",
-  "buiten het seizoen",
-  "tussen 14:00 en 14:03",
-  "op een woensdagavond",
-  "vlak voor sluitingstijd",
-  "alleen in schrikkeljaren",
-  "tijdens de aftrap",
-  "na het derde fluitsignaal",
-  "als de tribune zwijgt",
-  "rond het avondeten",
-  "bij windkracht 6",
-  "op blote voeten",
-  "tijdens de rust",
-];
-
-const intensities = [
-  "beangstigende",
-  "milde",
-  "onredelijke",
-  "klinische",
-  "verontrustende",
-  "spirituele",
-  "kosmische",
-  "wetenschappelijk bewezen",
-  "juridisch bindende",
-  "bovennatuurlijke",
-  "matig verontrustende",
-  "ongekende",
-  "stille",
-  "explosieve",
-  "diplomatieke",
-  "bescheiden",
-];
-
-const numberWords = [
-  "drie", "zeven", "elf", "nul", "veertien", "honderd", "vier",
-  "twee", "vijf", "negen", "zes", "twaalf", "duizend", "min één",
-];
-const digits = ["3", "7", "9", "4", "11", "2", "5", "6", "8", "13", "42"];
-
-const vibeAdjs = [
-  "voorwaardelijk",
-  "ijskoud",
-  "autoritair",
-  "clandestien",
-  "erfelijk",
-  "structureel",
-  "spiritueel",
-  "fatalistisch",
-  "numerologisch",
-  "thermisch",
-  "juridisch",
-  "ongeneeslijk",
-  "dreigend",
-  "transparant",
-  "veerkrachtig",
-  "ongebonden",
-  "psychologisch",
-  "mythisch",
-];
-
-const vibeNouns = [
-  "dominant",
-  "briljant",
-  "kalm",
-  "chaotisch",
-  "toegewijd",
-  "explosief",
-  "helder",
-  "twijfelend",
-  "grandioos",
-  "paniekerig",
-  "ambitieus",
-  "onverstoorbaar",
-];
-
-type Slots = {
-  object: string;
-  entity: string;
-  state: string;
-  when: string;
-  intensity: string;
-  number: string;
-  digit: string;
 };
 
-const answerTemplates: ((p: Slots) => string)[] = [
-  (p) => `Ja, maar alleen ${p.when}.`,
-  (p) => `Nee. En dat weet ${p.entity}.`,
-  (p) => `${cap(p.state)} gezien een ${p.digit}.`,
-  (p) => `Met ${p.intensity} zekerheid.`,
-  (p) => `Alleen als ${p.entity} niet kijkt.`,
-  (p) => `Dat heeft ${p.entity} ook geprobeerd.`,
-  (p) => `${cap(p.number)}. Altijd ${p.number}.`,
-  (p) => `Ik woon nu in ${p.object}.`,
-  (p) => `${cap(p.object)}, zoals een sukkel.`,
-  (p) => `Stilte, maar ${p.intensity}.`,
-  (p) => `Tegenrennen tot ${p.object} opgeeft.`,
-  (p) => `Oneindig veel. Ik aanbid ${p.object}.`,
-  (p) => `${cap(p.number)} pogingen en een gebed.`,
-  (p) => `Zoals ${p.entity} ${p.when}.`,
-  (p) => `Liever ${p.object} dan deze vraag.`,
-  (p) => `${cap(p.intensity)} ja. Definitief.`,
-  (p) => `Vraag dat maar aan ${p.entity}.`,
-  (p) => `${cap(p.state)}, en daar blijf ik bij.`,
-  (p) => `Absoluut. ${cap(p.state)} zelfs.`,
-  (p) => `Pas ${p.when}, geen seconde eerder.`,
-  (p) => `Met de hulp van ${p.entity}.`,
-  (p) => `${cap(p.digit)} keer. Vraag niet waarom.`,
-  (p) => `Net zo ${p.state} als ${p.object}.`,
-  (p) => `Nee, tenzij ${p.entity} erbij is.`,
-  (p) => `Volmondig ja, ${p.when}.`,
-  (p) => `Ik raadpleeg eerst ${p.object}.`,
-  (p) => `${cap(p.object)}. Logisch toch?`,
-  (p) => `Alleen ${p.when}, en met tegenzin.`,
-  (p) => `Dat bewaar ik voor ${p.entity}.`,
-  (p) => `${cap(p.number)} keer ja, ${p.number} keer nee.`,
-];
+type QuestionSpec = {
+  prompt: (s: Slots) => string;
+  answers: (s: Slots) => string[];
+};
 
-function answerSlots(): Slots {
+function makeSlots(): Slots {
   return {
     object: pick(objects),
     entity: pick(entities),
     state: pick(states),
-    when: pick(whens),
-    intensity: pick(intensities),
-    number: pick(numberWords),
-    digit: pick(digits),
+    scaleA: pick(scaleLow),
+    scaleB: pick(scaleHigh),
   };
 }
 
-/**
- * Genereer `n` verse antwoordopties.
- * `used` (labels) en `usedTpl` (template-indexen) worden over de héle sessie
- * gedeeld, zodat opties niet tussen vragen herhalen en zoveel mogelijk
- * verschillende zinsbouw gebruiken.
- */
-export function generateChoices(
-  n: number,
-  used: Set<string> = new Set(),
-  usedTpl: Set<number> = new Set(),
-): Choice[] {
-  const out: Choice[] = [];
-  for (let k = 0; k < n; k++) {
-    let label = "";
-    let chosenIdx = -1;
-    for (let attempt = 0; attempt < 40; attempt++) {
-      // Kies bij voorkeur een template die nog niet aan bod kwam.
-      const fresh = answerTemplates
-        .map((_, i) => i)
-        .filter((i) => !usedTpl.has(i));
-      const pool = fresh.length ? fresh : answerTemplates.map((_, i) => i);
-      const idx = pool[Math.floor(rng() * pool.length)];
-      const candidate = answerTemplates[idx](answerSlots());
-      chosenIdx = idx;
-      label = candidate;
-      if (!used.has(candidate)) break;
-    }
+const questionSpecs: QuestionSpec[] = [
+  {
+    prompt: (s) =>
+      `Op een schaal van ${s.scaleA} tot ${s.scaleB}: hoe ${s.state} voel jij je vandaag?`,
+    answers: (s) => [
+      `Eerder ${s.scaleA}, eerlijk gezegd.`,
+      `Helemaal richting ${s.scaleB}.`,
+      `Precies in het midden, maar wél ${s.state}.`,
+      `Voorbij ${s.scaleB}. Van de schaal af.`,
+      `Vandaag puur ${s.scaleA}.`,
+      `${cap(s.state)}. Pijnlijk ${s.state}.`,
+    ],
+  },
+  {
+    prompt: (s) => `Diep ademhalen. Dit bepaalt alles. Wat zou jij doen met ${s.object}?`,
+    answers: () => [
+      `Negeren tot het vanzelf weggaat.`,
+      `Aanbidden. Onvoorwaardelijk.`,
+      `Opeten. Sorry, niet sorry.`,
+      `Inlijsten en boven de bank hangen.`,
+      `Eraan ruiken en doorlopen.`,
+      `Begraven in de achtertuin.`,
+    ],
+  },
+  {
+    prompt: (s) => `Snel, niet nadenken: welke relatie heb jij precies met ${s.object}?`,
+    answers: () => [
+      `Het is ingewikkeld.`,
+      `Wij praten niet meer.`,
+      `Diepe, wederzijdse haat.`,
+      `Puur platonisch.`,
+      `Wij zijn praktisch getrouwd.`,
+      `Co-ouderschap, vreedzaam.`,
+    ],
+  },
+  {
+    prompt: (s) =>
+      `Stel: ${s.entity} kijkt jou recht aan en fluistert iets over ${s.object}. Wat fluistert ${s.entity}?`,
+    answers: () => [
+      `"Het weet wat je deed."`,
+      `"Vertrouw het nooit."`,
+      `"Het is al begonnen."`,
+      `"Loop. Nu. Niet omkijken."`,
+      `"Jij bent de uitverkorene."`,
+      `"Wij praten hier later over."`,
+    ],
+  },
+  {
+    prompt: (s) =>
+      `Cruciale kwalificatievraag: hoe ${s.state} is ${s.object} volgens jou, héél eerlijk?`,
+    answers: (s) => [
+      `Extreem ${s.state}.`,
+      `Totaal niet ${s.state}.`,
+      `Verontrustend ${s.state}.`,
+      `Net ${s.state} genoeg.`,
+      `${cap(s.state)}? Geen idee, maar ja.`,
+      `Te ${s.state} om over te praten.`,
+    ],
+  },
+  {
+    prompt: (s) =>
+      `Als ${s.entity} een ringtone had die afging tijdens ${s.object}, hoe erg is dat dan?`,
+    answers: (s) => [
+      `Ramp van wereldformaat.`,
+      `Eigenlijk best grappig.`,
+      `Onvergeeflijk. Punt.`,
+      `Hangt af van de ringtone.`,
+      `Niet erger dan ${s.object}.`,
+      `Ik bel de autoriteiten.`,
+    ],
+  },
+  {
+    prompt: (s) =>
+      `Belangrijk en volledig onbelangrijk: hoeveel vertrouwen heb jij in ${s.object}?`,
+    answers: () => [
+      `Blind vertrouwen.`,
+      `Nul. Nul komma nul.`,
+      `Meer dan in mezelf.`,
+      `Op goede dagen een beetje.`,
+      `Voor precies 87%, niet meer.`,
+      `Met heel mijn hart, helaas.`,
+    ],
+  },
+  {
+    prompt: (s) =>
+      `Eén vraag, het hele WK hangt ervan af: wat zegt ${s.object} over jou als mens?`,
+    answers: () => [
+      `Dat ik verborgen diepgang heb.`,
+      `Niets goeds, vrees ik.`,
+      `Alles. Echt alles.`,
+      `Meer dan mijn therapeut weet.`,
+      `Dat ik klaar ben voor het WK.`,
+      `Dat ik beter niet had geantwoord.`,
+    ],
+  },
+  {
+    prompt: (s) => `Hoe verhoudt jouw ochtendhumeur zich tot ${s.object}?`,
+    answers: (s) => [
+      `Exact identiek.`,
+      `Nog somberder dan dat.`,
+      `${cap(s.object)} wint glansrijk.`,
+      `Volstrekt onvergelijkbaar.`,
+      `Op een goede dag: gelijkspel.`,
+      `Daar wil ik 's ochtends niet aan denken.`,
+    ],
+  },
+  {
+    prompt: (s) => `Op welke precieze manier heeft ${s.object} jou ooit teleurgesteld?`,
+    answers: () => [
+      `Op alle mogelijke manieren.`,
+      `Te pijnlijk om te delen.`,
+      `Precies zoals iedereen.`,
+      `Stilletjes, maar grondig.`,
+      `Nog nooit. Heilig vertrouwen.`,
+      `Vraag niet waar het bij is.`,
+    ],
+  },
+  {
+    prompt: (s) => `Als jij ${s.entity} was, zou je dan anders omgaan met ${s.object}?`,
+    answers: (s) => [
+      `Ja, met veel meer respect.`,
+      `Nee, exact hetzelfde.`,
+      `Ik zou het volledig mijden.`,
+      `Alleen in het weekend.`,
+      `Ja, en niemand zou het snappen.`,
+      `Nee, ik bén ${s.entity} vanbinnen.`,
+    ],
+  },
+];
+
+// ── Antwoord-selectie ───────────────────────────────────────────────────────
+// Kies `n` unieke opties uit de pool van de vraag; `used` voorkomt dat exact
+// dezelfde optie in een latere vraag terugkomt.
+function pickAnswers(pool: string[], n: number, used: Set<string>): Choice[] {
+  const avail = pool.filter((p) => !used.has(p));
+  const base = avail.length >= n ? avail : pool; // val terug op volledige pool
+  return sample(base, n).map((label) => {
     used.add(label);
-    if (chosenIdx >= 0) usedTpl.add(chosenIdx);
-    out.push({ label, vibe: `${pick(vibeAdjs)} ${pick(vibeNouns)}` });
-  }
-  return out;
+    return { label, vibe: `${pick(vibeAdjs)} ${pick(vibeNouns)}` };
+  });
 }
 
 /** Aantal vragen voor deze sessie: willekeurig 5–7. */
@@ -283,65 +267,109 @@ export function randomQuestionCount(): number {
   return 5 + Math.floor(rng() * 3); // 5, 6 of 7
 }
 
-/** Genereer `count` unieke procedurele vragen. */
+/** Genereer `count` procedurele vragen mét passende antwoordopties. */
 export function generateQuestions(count: number): Question[] {
-  const tpls = sample(templates, Math.min(count, templates.length));
-  // Als count > aantal templates, vul aan met willekeurige templates.
-  while (tpls.length < count) tpls.push(pick(templates));
+  const specs = sample(questionSpecs, Math.min(count, questionSpecs.length));
+  while (specs.length < count) specs.push(pick(questionSpecs));
 
-  // Gedeeld over de hele sessie: geen herhaalde antwoordopties tussen vragen.
-  const used = new Set<string>();
-  const usedTpl = new Set<number>();
-
-  return tpls.map((tpl, i) => {
-    const prompt = tpl({
-      object: pick(objects),
-      entity: pick(entities),
-      state: pick(states),
-      scaleA: pick(scaleLow),
-      scaleB: pick(scaleHigh),
-    });
+  const used = new Set<string>(); // gedeeld over de sessie: geen herhaling
+  return specs.map((spec, i) => {
+    const s = makeSlots();
     const nChoices = 3 + Math.floor(rng() * 2); // 3 of 4
     return {
       id: `q${i}`,
-      prompt,
-      choices: generateChoices(nChoices, used, usedTpl),
+      prompt: spec.prompt(s),
+      choices: pickAnswers(spec.answers(s), nChoices, used),
     };
   });
 }
 
 // ── Vervolgvragen richting de wereldkampioen ───────────────────────────────
-// Drie extra vragen die "doorrekenen" naar de eindzege. Klinken episch,
-// betekenen exact even veel als de rest: niets.
-const championTemplates: ((p: {
-  object: string;
-  entity: string;
-  state: string;
-}) => string)[] = [
-  (p) => `Finalevraag 1/3: welke ploeg verdient de wereldtitel volgens ${p.object}?`,
-  (p) => `Finalevraag 2/3: als de beker kon praten, hoe ${p.state} zou hij zijn over ${p.object}?`,
-  (p) => `Finalevraag 3/3: ${p.entity} houdt de cup omhoog. Wat schreeuwt het stadion?`,
-  (p) => `Doorrekenend naar de eindzege: hoeveel weegt ${p.object} in jouw kampioensformule?`,
-  (p) => `Laatste ijking: wie tilt de beker het mooiste, ${p.entity} of ${p.object}?`,
-  (p) => `Beslissende factor: hoe ${p.state} mag een wereldkampioen zich voelen?`,
+// Drie extra vragen die "doorrekenen" naar de eindzege, met antwoorden die
+// echt over de finale/titel gaan.
+const championSpecs: QuestionSpec[] = [
+  {
+    prompt: (s) => `Finalevraag: welke ploeg verdient de wereldtitel volgens ${s.object}?`,
+    answers: (s) => [
+      `De underdog. Altijd de underdog.`,
+      `Degene met de mooiste shirts.`,
+      `Wie het minst hard heeft getraind.`,
+      `Dat fluistert ${s.object} niet.`,
+      `Het gastland, uit beleefdheid.`,
+      `Iedereen behalve de favoriet.`,
+    ],
+  },
+  {
+    prompt: (s) =>
+      `Finalevraag: als de beker kon praten, hoe ${s.state} zou hij zijn over ${s.object}?`,
+    answers: (s) => [
+      `Oneindig ${s.state}.`,
+      `Totaal niet ${s.state}, juist trots.`,
+      `Te ${s.state} voor woorden.`,
+      `Net ${s.state} genoeg voor een traan.`,
+      `${cap(s.state)}, en luidruchtig.`,
+      `De beker zwijgt in alle talen.`,
+    ],
+  },
+  {
+    prompt: (s) => `Finalevraag: ${s.entity} houdt de cup omhoog. Wat schreeuwt het stadion?`,
+    answers: (s) => [
+      `"Wij geloofden nooit, maar tóch!"`,
+      `"Dit gaat de boeken in!"`,
+      `"Wie had dít zien aankomen?"`,
+      `Oorverdovende, ongemakkelijke stilte.`,
+      `"${cap(s.entity)} voor president!"`,
+      `"Eindelijk! Eindelijk!"`,
+    ],
+  },
+  {
+    prompt: (s) =>
+      `Doorrekenend naar de eindzege: hoeveel weegt ${s.object} in jouw kampioensformule?`,
+    answers: () => [
+      `Doorslaggevend. 90% van alles.`,
+      `Marginaal, maar voelbaar.`,
+      `Zwaarder dan de spelers zelf.`,
+      `Precies 0%. En toch cruciaal.`,
+      `Net genoeg om de finale te kantelen.`,
+      `Onmeetbaar. Letterlijk.`,
+    ],
+  },
+  {
+    prompt: (s) =>
+      `Laatste ijking: wie tilt de beker het mooiste, ${s.entity} of ${s.object}?`,
+    answers: (s) => [
+      `${cap(s.entity)}, met overtuiging.`,
+      `${cap(s.object)}, verrassend sierlijk.`,
+      `Allebei tegelijk. Chaos.`,
+      `Geen van beide, ik doe het zelf.`,
+      `${cap(s.entity)}, maar met tegenzin.`,
+      `Dat beslist de scheidsrechter.`,
+    ],
+  },
+  {
+    prompt: (s) => `Beslissende factor: hoe ${s.state} mag een wereldkampioen zich voelen?`,
+    answers: (s) => [
+      `Maximaal ${s.state}.`,
+      `Net niet té ${s.state}.`,
+      `Voorbij ${s.state}. In extase.`,
+      `Helemaal niet ${s.state}, bescheiden.`,
+      `${cap(s.state)} tot de volgende ochtend.`,
+      `Zo ${s.state} als de wet toestaat.`,
+    ],
+  },
 ];
 
 /** Genereer precies 3 vervolgvragen richting de wereldkampioen. */
 export function generateChampionQuestions(): Question[] {
-  const tpls = sample(championTemplates, 3);
+  const specs = sample(championSpecs, 3);
   const used = new Set<string>();
-  const usedTpl = new Set<number>();
-  return tpls.map((tpl, i) => {
-    const prompt = tpl({
-      object: pick(objects),
-      entity: pick(entities),
-      state: pick(states),
-    });
+  return specs.map((spec, i) => {
+    const s = makeSlots();
     const nChoices = 3 + Math.floor(rng() * 2); // 3 of 4
     return {
       id: `c${i}`,
-      prompt,
-      choices: generateChoices(nChoices, used, usedTpl),
+      prompt: spec.prompt(s),
+      choices: pickAnswers(spec.answers(s), nChoices, used),
     };
   });
 }
