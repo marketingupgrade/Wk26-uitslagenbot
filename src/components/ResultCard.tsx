@@ -1,6 +1,7 @@
 import { motion, useMotionValue, useTransform, animate } from "motion/react";
 import { useEffect, useState } from "react";
 import type { MatchResult } from "../lib/generator";
+import { Scramble } from "./Scramble";
 
 function Counter({ to }: { to: number }) {
   const mv = useMotionValue(0);
@@ -114,7 +115,7 @@ export default function ResultCard({ result }: { result: MatchResult }) {
               marginBottom: 8,
             }}
           >
-            {line}
+            <Scramble text={line} />
           </motion.p>
         ))}
 

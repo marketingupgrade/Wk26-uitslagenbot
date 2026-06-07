@@ -30,6 +30,7 @@ npm run build    # productiebuild
 | `src/lib/generator.ts` | Genereert de onrealistische uitslag + onzin-onderbouwing |
 | `src/lib/activity.ts` | **Event-bus** — hier plug je later de live user-activity / "de bit" op aan |
 | `src/lib/theme.ts` | Voorwaarts-huisstijlkleuren |
+| `src/components/Scramble.tsx` | "Decodeer"-effect: bot-tekst scrambelt en klikt karakter-voor-karakter vast |
 | `src/components/` | Header, chatbubbels, teamkiezer, uitslagkaart, waanzin-meter |
 
 ## Uitbreidingspunten (voor jouw latere code)

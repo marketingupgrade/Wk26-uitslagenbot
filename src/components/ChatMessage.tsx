@@ -1,5 +1,6 @@
 import { motion } from "motion/react";
 import type { ReactNode } from "react";
+import { Scramble } from "./Scramble";
 
 export type Sender = "bot" | "user";
 
@@ -11,6 +12,13 @@ export default function ChatMessage({
   children: ReactNode;
 }) {
   const isBot = sender === "bot";
+  // Bot-tekst verschijnt "gedecodeerd" via het Scramble-effect.
+  const body =
+    isBot && typeof children === "string" ? (
+      <Scramble text={children} />
+    ) : (
+      children
+    );
   return (
     <motion.div
       initial={{ opacity: 0, y: 16, scale: 0.96 }}
@@ -50,7 +58,7 @@ export default function ChatMessage({
           fontWeight: isBot ? 400 : 600,
         }}
       >
-        {children}
+        {body}
       </div>
     </motion.div>
   );

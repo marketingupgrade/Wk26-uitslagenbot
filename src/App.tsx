@@ -138,14 +138,7 @@ export default function App() {
 
   async function askQuestion(i: number) {
     setStep("boot");
-    await botSay(
-      <span>
-        <strong style={{ color: "var(--green-bright)" }}>
-          Vraag {i + 1}/{questions.length}.
-        </strong>{" "}
-        {questions[i].prompt}
-      </span>,
-    );
+    await botSay(`Vraag ${i + 1}/${questions.length}. ${questions[i].prompt}`);
     setStep("questions");
     activity.push({ kind: "bot", text: `Vraag ${i + 1}: ${questions[i].id}` });
   }
