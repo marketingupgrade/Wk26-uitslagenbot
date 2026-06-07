@@ -5,9 +5,17 @@ import ChatMessage from "./components/ChatMessage";
 import TypingDots from "./components/TypingDots";
 import TeamPicker from "./components/TeamPicker";
 import ResultCard from "./components/ResultCard";
+import TruthMeter from "./components/TruthMeter";
 import { teams, type Team } from "./data/teams";
-import { questions } from "./data/questions";
 import { generateResult } from "./lib/generator";
+import {
+  generateQuestions,
+  randomQuestionCount,
+  buildTruthSteps,
+  reactionForProgress,
+  type Question,
+  type TruthStep,
+} from "./lib/questionGen";
 
 type Step =
   | "boot"
@@ -36,17 +44,10 @@ const awayReactions = [
   (t: Team) => `${t.name} als tegenstander. Klassiek. Roekeloos. Ik hou ervan.`,
   (t: Team) => `Aha, ${t.name}. Mijn modellen beginnen al stilletjes te huilen.`,
 ];
-const choiceReactions = [
-  "Fascinerend. Dit verandert werkelijk niets, en toch álles.",
-  "Mm-hm. Precies wat een kampioen zou antwoorden. Of een gevaar.",
-  "Ik schrijf dit op met een pen die niet bestaat. Ga door.",
-  "Interessant. De data trilt licht. Dat is meestal goed.",
-  "Noted. Mijn vertrouwen in de mensheid daalt, mijn voorspelling stijgt.",
-];
 const calcLines = [
   "Oké. Genoeg onzin. Nu de échte onzin.",
   "Ik raadpleeg de heilige Voorwaarts-archieven van 1907…",
-  "Kruisverwijzing met de stand van de maan en jouw lepelvoorkeur…",
+  "Kruisverwijzing met de stand van de maan en jouw antwoorden…",
   "Negeren van alle bestaande voetbalkennis… klaar.",
   "Berekening voltooid. Je gaat dit niet leuk vinden. Ik wel.",
 ];
@@ -59,8 +60,12 @@ export default function App() {
   const [away, setAway] = useState<Team | null>(null);
   const [qIndex, setQIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [sessionQuestions, setSessionQuestions] = useState<Question[]>([]);
+  const [truthSteps, setTruthSteps] = useState<TruthStep[]>([]);
+  const [meterStep, setMeterStep] = useState(0); // aantal beantwoorde vragen
   const scrollRef = useRef<HTMLDivElement>(null);
   const booted = useRef(false);
+  const qsRef = useRef<Question[]>([]); // synchrone toegang in de async-flow
 
   const addBot = (content: ReactNode) =>
     setMessages((m) => [...m, { id: uid(), sender: "bot", content }]);
@@ -72,6 +77,19 @@ export default function App() {
     await wait(delay);
     setTyping(false);
     addBot(content);
+  }
+
+  // Genereer een verse sessie: random aantal vragen (5–7) + meter-opbouw.
+  function newSession(): Question[] {
+    const n = randomQuestionCount();
+    const qs = generateQuestions(n);
+    qsRef.current = qs;
+    setSessionQuestions(qs);
+    setTruthSteps(buildTruthSteps(n));
+    setMeterStep(0);
+    setQIndex(0);
+    setAnswers({});
+    return qs;
   }
 
   // Auto-scroll
@@ -86,6 +104,7 @@ export default function App() {
   useEffect(() => {
     if (booted.current) return;
     booted.current = true;
+    newSession();
     (async () => {
       await botSay("Goedendag. Ik ben de officiële WK26 Uitslagenbot van v.v. Voorwaarts.", 700);
       await botSay(
@@ -123,30 +142,35 @@ export default function App() {
     setStep("boot");
     await botSay(pick(awayReactions)(t));
     await botSay(
-      "Mooi. Nu de vragenronde. Geen enkele vraag gaat over voetbal. Vertrouw het proces.",
+      `Mooi. Nu ${qsRef.current.length} zeer belangrijke vragen die nergens over gaan. Vertrouw het proces.`,
     );
     setQIndex(0);
     await askQuestion(0);
   }
 
   async function askQuestion(i: number) {
+    const qs = qsRef.current;
     setStep("boot");
-    await botSay(`Vraag ${i + 1}/${questions.length}. ${questions[i].prompt}`);
+    await botSay(`Vraag ${i + 1}/${qs.length}. ${qs[i].prompt}`);
     setStep("questions");
   }
 
   async function handleChoice(label: string, vibe: string) {
-    const q = questions[qIndex];
+    const qs = qsRef.current;
+    const q = qs[qIndex];
     addUser(label);
     const nextAnswers = { ...answers, [q.id]: vibe };
     setAnswers(nextAnswers);
-    setStep("boot");
-    await botSay(pick(choiceReactions), 650);
 
-    const next = qIndex + 1;
-    if (next < questions.length) {
-      setQIndex(next);
-      await askQuestion(next);
+    // Waarheidsmeter een stap omhoog.
+    const answered = qIndex + 1;
+    setMeterStep(answered);
+    setStep("boot");
+    await botSay(reactionForProgress(answered / qs.length), 650);
+
+    if (answered < qs.length) {
+      setQIndex(answered);
+      await askQuestion(answered);
     } else {
       await runCalculation(nextAnswers);
     }
@@ -169,12 +193,16 @@ export default function App() {
     setMessages([]);
     setHome(null);
     setAway(null);
-    setAnswers({});
-    setQIndex(0);
     setStep("boot");
+    newSession();
     await botSay("Daar zijn we weer. Nog steeds 0% nauwkeurig. Kies de THUISPLOEG.", 500);
     setStep("pickHome");
   }
+
+  const showMeter =
+    truthSteps.length > 0 &&
+    (step === "questions" || step === "calculating" || step === "result");
+  const meter = truthSteps[Math.min(meterStep, truthSteps.length - 1)];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", position: "relative", zIndex: 1 }}>
@@ -182,6 +210,12 @@ export default function App() {
       <div style={{ display: "flex", flex: 1, minHeight: 0 }}>
         {/* Chat kolom (volledige breedte) */}
         <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+          <AnimatePresence>
+            {showMeter && meter && (
+              <TruthMeter value={meter.value} label={meter.label} />
+            )}
+          </AnimatePresence>
+
           <div
             ref={scrollRef}
             style={{
@@ -224,6 +258,7 @@ export default function App() {
                 home={home}
                 away={away}
                 qIndex={qIndex}
+                questions={sessionQuestions}
                 onPickHome={handlePickHome}
                 onPickAway={handlePickAway}
                 onChoice={handleChoice}
@@ -242,6 +277,7 @@ function InputZone({
   home,
   away,
   qIndex,
+  questions,
   onPickHome,
   onPickAway,
   onChoice,
@@ -251,6 +287,7 @@ function InputZone({
   home: Team | null;
   away: Team | null;
   qIndex: number;
+  questions: Question[];
   onPickHome: (t: Team) => void;
   onPickAway: (t: Team) => void;
   onChoice: (label: string, vibe: string) => void;
@@ -262,6 +299,7 @@ function InputZone({
     return <TeamPicker teams={teams} exclude={home} onPick={onPickAway} />;
   if (step === "questions") {
     const q = questions[qIndex];
+    if (!q) return null;
     return (
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {q.choices.map((c, i) => (
