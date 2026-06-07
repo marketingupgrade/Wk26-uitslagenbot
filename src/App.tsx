@@ -3,10 +3,10 @@ import { AnimatePresence, motion } from "motion/react";
 import Header from "./components/Header";
 import ChatMessage from "./components/ChatMessage";
 import TypingDots from "./components/TypingDots";
-import TeamPicker from "./components/TeamPicker";
+import MatchPicker, { type PickedMatch } from "./components/MatchPicker";
 import ResultCard from "./components/ResultCard";
 import TruthMeter from "./components/TruthMeter";
-import { teams, type Team } from "./data/teams";
+import { type Team } from "./data/teams";
 import { generateResult } from "./lib/generator";
 import {
   generateQuestions,
@@ -19,8 +19,7 @@ import {
 
 type Step =
   | "boot"
-  | "pickHome"
-  | "pickAway"
+  | "pickMatch"
   | "questions"
   | "calculating"
   | "result";
@@ -32,17 +31,13 @@ const pick = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
 let _id = 0;
 const uid = () => `m${_id++}`;
 
-const homeReactions = [
-  (t: Team) =>
-    `${t.name}? Gedurfd. Mijn tante koos ooit hetzelfde en die praat nu alleen nog met planten.`,
-  (t: Team) => `Genoteerd: ${t.name}. Ik voel meteen spanning. Of dat is de lunch.`,
-  (t: Team) => `${t.name}, oké. Sterke keuze voor iemand met die specifieke energie.`,
-];
-const awayReactions = [
-  (t: Team) =>
-    `Tegen ${t.name}? Hmm. De sterren staan ongemakkelijk, maar dat doen ze altijd.`,
-  (t: Team) => `${t.name} als tegenstander. Klassiek. Roekeloos. Ik hou ervan.`,
-  (t: Team) => `Aha, ${t.name}. Mijn modellen beginnen al stilletjes te huilen.`,
+const matchReactions = [
+  (m: PickedMatch) =>
+    `${m.home.name} - ${m.away.name}, ${m.date} in ${m.location}. Gedurfde keuze uit het officiële schema. Mijn tante koos ooit hetzelfde duel en die praat nu alleen nog met planten.`,
+  (m: PickedMatch) =>
+    `Genoteerd: ${m.home.name} - ${m.away.name} (${m.round}). Ik voel meteen spanning. Of dat is de lunch.`,
+  (m: PickedMatch) =>
+    `Aha, ${m.home.name} - ${m.away.name} om ${m.time}. Klassiek. Roekeloos. Mijn modellen beginnen al stilletjes te huilen.`,
 ];
 const calcLines = [
   "Oké. Genoeg onzin. Nu de échte onzin.",
@@ -113,34 +108,28 @@ export default function App() {
       await botSay(
         "Eerst de formaliteiten, dan een reeks zeer belangrijke en volledig onbelangrijke vragen. Daarna: de waarheid.",
       );
-      await botSay("Kies de THUISPLOEG. Denk goed na. Of niet. Maakt niet uit.");
-      setStep("pickHome");
+      await botSay(
+        "Kies een WEDSTRIJD uit het officiële WK26-speelschema. Eerst een ronde, dan het duel. Denk goed na. Of niet. Maakt niet uit.",
+      );
+      setStep("pickMatch");
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function handlePickHome(t: Team) {
-    setHome(t);
+  async function handlePickMatch(m: PickedMatch) {
+    setHome(m.home);
+    setAway(m.away);
     addUser(
       <span>
-        {t.flag} {t.name}
+        {m.home.flag} {m.home.name} — {m.away.flag} {m.away.name}
+        <span style={{ opacity: 0.6, fontSize: 12 }}>
+          {" "}
+          ({m.date} · {m.time} · {m.location})
+        </span>
       </span>,
     );
     setStep("boot");
-    await botSay(pick(homeReactions)(t));
-    await botSay("En nu de UITPLOEG. De tegenstander. Het lijdend voorwerp.");
-    setStep("pickAway");
-  }
-
-  async function handlePickAway(t: Team) {
-    setAway(t);
-    addUser(
-      <span>
-        {t.flag} {t.name}
-      </span>,
-    );
-    setStep("boot");
-    await botSay(pick(awayReactions)(t));
+    await botSay(pick(matchReactions)(m));
     await botSay(
       `Mooi. Nu ${qsRef.current.length} zeer belangrijke vragen die nergens over gaan. Vertrouw het proces.`,
     );
@@ -195,8 +184,11 @@ export default function App() {
     setAway(null);
     setStep("boot");
     newSession();
-    await botSay("Daar zijn we weer. Nog steeds 0% nauwkeurig. Kies de THUISPLOEG.", 500);
-    setStep("pickHome");
+    await botSay(
+      "Daar zijn we weer. Nog steeds 0% nauwkeurig. Kies een wedstrijd uit het schema.",
+      500,
+    );
+    setStep("pickMatch");
   }
 
   const showMeter =
@@ -258,12 +250,9 @@ export default function App() {
             <div style={{ maxWidth: 760, margin: "0 auto" }}>
               <InputZone
                 step={step}
-                home={home}
-                away={away}
                 qIndex={qIndex}
                 questions={sessionQuestions}
-                onPickHome={handlePickHome}
-                onPickAway={handlePickAway}
+                onPickMatch={handlePickMatch}
                 onChoice={handleChoice}
                 onRestart={restart}
               />
@@ -277,29 +266,20 @@ export default function App() {
 
 function InputZone({
   step,
-  home,
-  away,
   qIndex,
   questions,
-  onPickHome,
-  onPickAway,
+  onPickMatch,
   onChoice,
   onRestart,
 }: {
   step: Step;
-  home: Team | null;
-  away: Team | null;
   qIndex: number;
   questions: Question[];
-  onPickHome: (t: Team) => void;
-  onPickAway: (t: Team) => void;
+  onPickMatch: (m: PickedMatch) => void;
   onChoice: (label: string, vibe: string) => void;
   onRestart: () => void;
 }) {
-  if (step === "pickHome")
-    return <TeamPicker teams={teams} exclude={away} onPick={onPickHome} />;
-  if (step === "pickAway")
-    return <TeamPicker teams={teams} exclude={home} onPick={onPickAway} />;
+  if (step === "pickMatch") return <MatchPicker onPick={onPickMatch} />;
   if (step === "questions") {
     const q = questions[qIndex];
     if (!q) return null;
