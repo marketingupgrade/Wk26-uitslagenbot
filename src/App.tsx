@@ -5,11 +5,14 @@ import ChatMessage from "./components/ChatMessage";
 import TypingDots from "./components/TypingDots";
 import MatchPicker, { type PickedMatch } from "./components/MatchPicker";
 import ResultCard from "./components/ResultCard";
+import ChampionCard from "./components/ChampionCard";
 import TruthMeter from "./components/TruthMeter";
 import { type Team } from "./data/teams";
 import { generateResult } from "./lib/generator";
+import { generateChampion } from "./lib/champion";
 import {
   generateQuestions,
+  generateChampionQuestions,
   randomQuestionCount,
   buildTruthSteps,
   reactionForProgress,
@@ -22,7 +25,10 @@ type Step =
   | "pickMatch"
   | "questions"
   | "calculating"
-  | "result";
+  | "result"
+  | "champQuestions"
+  | "champCalc"
+  | "champResult";
 
 type Msg = { id: string; sender: "bot" | "user"; content: ReactNode };
 
@@ -46,6 +52,12 @@ const calcLines = [
   "Negeren van alle bestaande voetbalkennis… klaar.",
   "Berekening voltooid. Je gaat dit niet leuk vinden. Ik wel.",
 ];
+const champCalcLines = [
+  "Doorrekenen naar de eindzege… alle 104 duels simuleren in 0,0 seconden.",
+  "Ik gooi de poule-indeling, de logica en een dobbelsteen in één blender…",
+  "Verzin nu een doelsaldo dat nergens op slaat maar prachtig oogt…",
+  "De wereldkampioen is bepaald. Volstrekt willekeurig. Volledig definitief.",
+];
 
 export default function App() {
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -58,9 +70,12 @@ export default function App() {
   const [sessionQuestions, setSessionQuestions] = useState<Question[]>([]);
   const [truthSteps, setTruthSteps] = useState<TruthStep[]>([]);
   const [meterStep, setMeterStep] = useState(0); // aantal beantwoorde vragen
+  const [champQuestions, setChampQuestions] = useState<Question[]>([]);
+  const [champIndex, setChampIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const booted = useRef(false);
   const qsRef = useRef<Question[]>([]); // synchrone toegang in de async-flow
+  const champQsRef = useRef<Question[]>([]);
 
   const addBot = (content: ReactNode) =>
     setMessages((m) => [...m, { id: uid(), sender: "bot", content }]);
@@ -178,11 +193,65 @@ export default function App() {
     setStep("result");
   }
 
+  // ── Vervolg: doorrekenen naar de wereldkampioen ───────────────────────────
+  async function startChampion() {
+    const qs = generateChampionQuestions();
+    champQsRef.current = qs;
+    setChampQuestions(qs);
+    setChampIndex(0);
+    setStep("boot");
+    await botSay(
+      "Uitstekend. Maar één duel is kinderspel. Laten we dóórrekenen naar de absolute eindzege: de wereldkampioen.",
+    );
+    await botSay("Nog 3 beslissende vragen. Het hele toernooi hangt ervan af. Niet echt, maar toch.");
+    await askChampQuestion(0);
+  }
+
+  async function askChampQuestion(i: number) {
+    const qs = champQsRef.current;
+    setStep("boot");
+    await botSay(qs[i].prompt);
+    setChampIndex(i);
+    setStep("champQuestions");
+  }
+
+  async function handleChampChoice(label: string, vibe: string) {
+    const qs = champQsRef.current;
+    const q = qs[champIndex];
+    addUser(label);
+    const next = { ...answers, [q.id]: vibe };
+    setAnswers(next);
+    const answered = champIndex + 1;
+    setStep("boot");
+    await botSay(reactionForProgress(answered / qs.length), 600);
+    if (answered < qs.length) {
+      await askChampQuestion(answered);
+    } else {
+      await runChampionCalc(next);
+    }
+  }
+
+  async function runChampionCalc(finalAnswers: Record<string, string>) {
+    setStep("champCalc");
+    for (const line of champCalcLines) {
+      await botSay(line, 700);
+    }
+    const champ = generateChampion(finalAnswers);
+    setTyping(true);
+    await wait(900);
+    setTyping(false);
+    addBot(<ChampionCard result={champ} />);
+    setStep("champResult");
+  }
+
   async function restart() {
     setMessages([]);
     setHome(null);
     setAway(null);
     setStep("boot");
+    setChampQuestions([]);
+    setChampIndex(0);
+    champQsRef.current = [];
     newSession();
     await botSay(
       "Daar zijn we weer. Nog steeds 0% nauwkeurig. Kies een wedstrijd uit het schema.",
@@ -193,7 +262,12 @@ export default function App() {
 
   const showMeter =
     truthSteps.length > 0 &&
-    (step === "questions" || step === "calculating" || step === "result");
+    (step === "questions" ||
+      step === "calculating" ||
+      step === "result" ||
+      step === "champQuestions" ||
+      step === "champCalc" ||
+      step === "champResult");
   const meter = truthSteps[Math.min(meterStep, truthSteps.length - 1)];
 
   return (
@@ -252,8 +326,12 @@ export default function App() {
                 step={step}
                 qIndex={qIndex}
                 questions={sessionQuestions}
+                champIndex={champIndex}
+                champQuestions={champQuestions}
                 onPickMatch={handlePickMatch}
                 onChoice={handleChoice}
+                onChampChoice={handleChampChoice}
+                onStartChampion={startChampion}
                 onRestart={restart}
               />
             </div>
@@ -268,27 +346,38 @@ function InputZone({
   step,
   qIndex,
   questions,
+  champIndex,
+  champQuestions,
   onPickMatch,
   onChoice,
+  onChampChoice,
+  onStartChampion,
   onRestart,
 }: {
   step: Step;
   qIndex: number;
   questions: Question[];
+  champIndex: number;
+  champQuestions: Question[];
   onPickMatch: (m: PickedMatch) => void;
   onChoice: (label: string, vibe: string) => void;
+  onChampChoice: (label: string, vibe: string) => void;
+  onStartChampion: () => void;
   onRestart: () => void;
 }) {
   if (step === "pickMatch") return <MatchPicker onPick={onPickMatch} />;
-  if (step === "questions") {
-    const q = questions[qIndex];
+
+  if (step === "questions" || step === "champQuestions") {
+    const isChamp = step === "champQuestions";
+    const q = isChamp ? champQuestions[champIndex] : questions[qIndex];
     if (!q) return null;
+    const handle = isChamp ? onChampChoice : onChoice;
     return (
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {q.choices.map((c, i) => (
           <motion.button
             key={c.label}
-            onClick={() => onChoice(c.label, c.vibe)}
+            onClick={() => handle(c.label, c.vibe)}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.05 }}
@@ -310,7 +399,52 @@ function InputZone({
       </div>
     );
   }
+
   if (step === "result")
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <motion.button
+          onClick={onStartChampion}
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+          style={{
+            width: "100%",
+            padding: "13px",
+            borderRadius: 12,
+            background: "linear-gradient(135deg, #e9c45a, #b8860b)",
+            color: "#241a00",
+            fontWeight: 800,
+            fontSize: 15,
+            boxShadow: "0 8px 22px rgba(184,134,11,0.5)",
+          }}
+        >
+          🏆 Reken door naar de wereldkampioen (3 vragen)
+        </motion.button>
+        <motion.button
+          onClick={onRestart}
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+          style={{
+            width: "100%",
+            padding: "11px",
+            borderRadius: 12,
+            background: "rgba(22,163,74,0.18)",
+            border: "1px solid rgba(22,163,74,0.45)",
+            color: "var(--cream)",
+            fontWeight: 700,
+            fontSize: 14,
+          }}
+        >
+          🔁 Andere wedstrijd
+        </motion.button>
+      </div>
+    );
+
+  if (step === "champResult")
     return (
       <motion.button
         onClick={onRestart}
@@ -329,14 +463,14 @@ function InputZone({
           boxShadow: "0 8px 22px rgba(12,107,52,0.5)",
         }}
       >
-        🔁 Nog een volstrekt onbetrouwbare uitslag genereren
+        🔁 Nog een volstrekt onbetrouwbare voorspelling
       </motion.button>
     );
 
-  // boot / calculating → wachtindicatie
+  // boot / calculating / champCalc → wachtindicatie
   return (
     <div style={{ fontSize: 13, opacity: 0.55, textAlign: "center", padding: "4px 0" }}>
-      {step === "calculating"
+      {step === "calculating" || step === "champCalc"
         ? "De bot rekent… of doet alsof. Beide."
         : "Even geduld, de bot formuleert iets onverantwoords…"}
     </div>
