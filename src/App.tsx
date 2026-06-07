@@ -376,7 +376,7 @@ function InputZone({
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {q.choices.map((c, i) => (
           <motion.button
-            key={c.label}
+            key={`${c.label}-${i}`}
             onClick={() => handle(c.label, c.vibe)}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}

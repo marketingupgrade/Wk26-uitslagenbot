@@ -101,28 +101,131 @@ const templates: ((p: {
   (p) => `Als jij ${p.entity} was, zou je dan anders omgaan met ${p.object}?`,
 ];
 
-// Deadpan antwoorden die op vrijwel elke absurde vraag passen.
-// Elke keuze draagt een 'vibe' mee die de uitslag-onderbouwing voedt.
-const choicePool: Choice[] = [
-  { label: "Ja, maar alleen op dinsdag.", vibe: "voorwaardelijk dominant" },
-  { label: "Nee. En dat weet je.", vibe: "ijskoud" },
-  { label: "Emotioneel gezien een 7.", vibe: "gemiddeld explosief" },
-  { label: "Met beangstigende zekerheid.", vibe: "autoritair" },
-  { label: "Alleen als niemand kijkt.", vibe: "clandestien" },
-  { label: "Dat heeft mijn oma ook geprobeerd.", vibe: "erfelijk briljant" },
-  { label: "Vol overgave, nul spijt.", vibe: "hoog werkethos" },
-  { label: "Ik woon daar nu.", vibe: "permanent commitment" },
-  { label: "Drie. Altijd drie.", vibe: "numerologisch" },
-  { label: "De holle kant, zoals een sukkel.", vibe: "conventioneel" },
-  { label: "Stilte, maar dreigend.", vibe: "psychologisch" },
-  { label: "Crazy Frog, helaas.", vibe: "ongeneeslijk" },
-  { label: "Een raam. Ik bén een raam.", vibe: "transparant maar dragend" },
-  { label: "Tegenrennen tot de fysica opgeeft.", vibe: "fatalistisch" },
-  { label: "Oneindig veel. Ik aanbid de leegte.", vibe: "spiritueel" },
-  { label: "Acht pogingen en een gebed.", vibe: "veerkrachtig" },
-  { label: "Vooruit, recht een muur in.", vibe: "ongebonden" },
-  { label: "Mythisch. Geen verdere vragen.", vibe: "mythisch" },
+// ── Procedurele antwoorden ──────────────────────────────────────────────────
+// Net als de vragen worden de antwoordopties élke keer vers samengesteld uit
+// woordbanken — geen vaste lijst. Elke keuze draagt een willekeurig opgebouwde
+// 'vibe' mee die de uitslag-onderbouwing voedt.
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+const whens = [
+  "op dinsdag",
+  "tijdens volle maan",
+  "voor de koffie",
+  "na het toetje",
+  "in even jaren",
+  "als het motregent",
+  "buiten het seizoen",
+  "tussen 14:00 en 14:03",
 ];
+
+const intensities = [
+  "beangstigende",
+  "milde",
+  "onredelijke",
+  "klinische",
+  "verontrustende",
+  "spirituele",
+  "kosmische",
+  "wetenschappelijk bewezen",
+];
+
+const numberWords = ["drie", "zeven", "elf", "nul", "veertien", "honderd", "vier"];
+const digits = ["3", "7", "9", "4", "11"];
+
+const vibeAdjs = [
+  "voorwaardelijk",
+  "ijskoud",
+  "autoritair",
+  "clandestien",
+  "erfelijk",
+  "structureel",
+  "spiritueel",
+  "fatalistisch",
+  "numerologisch",
+  "thermisch",
+  "juridisch",
+  "ongeneeslijk",
+  "dreigend",
+  "transparant",
+  "veerkrachtig",
+  "ongebonden",
+  "psychologisch",
+  "mythisch",
+];
+
+const vibeNouns = [
+  "dominant",
+  "briljant",
+  "kalm",
+  "chaotisch",
+  "toegewijd",
+  "explosief",
+  "helder",
+  "twijfelend",
+  "grandioos",
+  "paniekerig",
+  "ambitieus",
+  "onverstoorbaar",
+];
+
+type Slots = {
+  object: string;
+  entity: string;
+  state: string;
+  when: string;
+  intensity: string;
+  number: string;
+  digit: string;
+};
+
+const answerTemplates: ((p: Slots) => string)[] = [
+  (p) => `Ja, maar alleen ${p.when}.`,
+  (p) => `Nee. En dat weet ${p.entity}.`,
+  (p) => `${cap(p.state)} gezien een ${p.digit}.`,
+  (p) => `Met ${p.intensity} zekerheid.`,
+  (p) => `Alleen als ${p.entity} niet kijkt.`,
+  (p) => `Dat heeft ${p.entity} ook geprobeerd.`,
+  (p) => `${cap(p.number)}. Altijd ${p.number}.`,
+  (p) => `Ik woon nu in ${p.object}.`,
+  (p) => `${cap(p.object)}, zoals een sukkel.`,
+  (p) => `Stilte, maar ${p.intensity}.`,
+  (p) => `Tegenrennen tot ${p.object} opgeeft.`,
+  (p) => `Oneindig veel. Ik aanbid ${p.object}.`,
+  (p) => `${cap(p.number)} pogingen en een gebed.`,
+  (p) => `Zoals ${p.entity} ${p.when}.`,
+  (p) => `Liever ${p.object} dan deze vraag.`,
+  (p) => `${cap(p.intensity)} ja. Definitief.`,
+  (p) => `Vraag dat maar aan ${p.entity}.`,
+  (p) => `${cap(p.state)}, en daar blijf ik bij.`,
+];
+
+function answerSlots(): Slots {
+  return {
+    object: pick(objects),
+    entity: pick(entities),
+    state: pick(states),
+    when: pick(whens),
+    intensity: pick(intensities),
+    number: pick(numberWords),
+    digit: pick(digits),
+  };
+}
+
+/** Genereer `n` verse, willekeurige antwoordopties met opgebouwde vibe. */
+export function generateChoices(n: number): Choice[] {
+  const tpls = sample(answerTemplates, Math.min(n, answerTemplates.length));
+  while (tpls.length < n) tpls.push(pick(answerTemplates));
+  const seen = new Set<string>();
+  const out: Choice[] = [];
+  for (const tpl of tpls) {
+    let label = tpl(answerSlots());
+    let guard = 0;
+    while (seen.has(label) && guard++ < 6) label = tpl(answerSlots());
+    seen.add(label);
+    out.push({ label, vibe: `${pick(vibeAdjs)} ${pick(vibeNouns)}` });
+  }
+  return out;
+}
 
 /** Aantal vragen voor deze sessie: willekeurig 5–7. */
 export function randomQuestionCount(): number {
@@ -147,7 +250,7 @@ export function generateQuestions(count: number): Question[] {
     return {
       id: `q${i}`,
       prompt,
-      choices: sample(choicePool, nChoices),
+      choices: generateChoices(nChoices),
     };
   });
 }
@@ -181,7 +284,7 @@ export function generateChampionQuestions(): Question[] {
     return {
       id: `c${i}`,
       prompt,
-      choices: sample(choicePool, nChoices),
+      choices: generateChoices(nChoices),
     };
   });
 }
