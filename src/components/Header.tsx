@@ -7,18 +7,24 @@ export default function Header() {
   return (
     <header
       style={{
-        display: "flex",
-        alignItems: "center",
-        gap: isMobile ? 10 : 14,
-        padding: isMobile ? "11px 14px" : "16px 20px",
         borderBottom: "1px solid var(--line)",
         background: "rgba(5, 48, 21, 0.55)",
         backdropFilter: "blur(10px)",
         position: "sticky",
         top: 0,
         zIndex: 5,
+        padding: isMobile ? "11px var(--gutter)" : "16px var(--gutter)",
       }}
     >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: isMobile ? 10 : 14,
+          maxWidth: "var(--content-max)",
+          margin: "0 auto",
+        }}
+      >
       <motion.img
         src="/voorwaarts-logo.png"
         alt="v.v. Voorwaarts Utrecht"
@@ -73,6 +79,7 @@ export default function Header() {
           100% wetenschappelijk*
         </span>
       )}
+      </div>
     </header>
   );
 }

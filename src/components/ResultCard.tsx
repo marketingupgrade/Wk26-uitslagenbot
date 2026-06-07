@@ -30,7 +30,6 @@ export default function ResultCard({ result }: { result: MatchResult }) {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ type: "spring", stiffness: 200, damping: 22 }}
       style={{
-        marginTop: 6,
         borderRadius: 20,
         overflow: "hidden",
         border: "1px solid rgba(22,163,74,0.4)",
