@@ -73,7 +73,7 @@ export default function ChampionCard({ result }: { result: ChampionResult }) {
             marginBottom: 12,
           }}
         >
-          📈 Verzonnen toernooistatistieken
+          📈 12 verzonnen toernooistatistieken
         </div>
 
         <div
@@ -103,12 +103,12 @@ export default function ChampionCard({ result }: { result: ChampionResult }) {
             key={i}
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.5 + i * 0.2 }}
+            transition={{ delay: 0.4 + i * 0.08 }}
             style={{
               fontSize: 13.5,
               lineHeight: 1.5,
               color: "var(--cream)",
-              marginBottom: 7,
+              marginBottom: 6,
             }}
           >
             • <Scramble text={line} />

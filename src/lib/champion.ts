@@ -46,16 +46,46 @@ const verdicts = [
   "ondanks 0% balbezit in elke wedstrijd behalve de rust",
 ];
 
-const statBanks = [
-  () => `Totale loopafstand: ${between(3, 9)} kilometer — als team, het hele toernooi.`,
-  () => `Balbezit in de finale: ${between(1, 6)}%. Toch gewonnen met dubbele cijfers.`,
-  () => `Corners benut: ${between(8, 14)} uit ${between(2, 5)} genomen. Wiskundig onmogelijk, juridisch waterdicht.`,
-  () => `Gele kaarten: ${between(0, 1)}. Vriendelijkste kampioen sinds mensenheugenis.`,
-  () => `Aantal keer dat de scheidsrechter "sorry" zei: ${between(4, 19)}.`,
-  () => `Buitenspeldoelpunten goedgekeurd: ${between(3, 7)}, na uitgebreid oogcontact.`,
-  () => `Hoogste xG in één wedstrijd: 0,03. Eindstand die dag: ${between(6, 12)}-0.`,
-  () => `Penalty's gemist én alsnog gescoord: ${between(1, 3)}. Niemand weet hoe.`,
+// Hyperspecifieke, volstrekt niet-voetbal "statistieken". Pure onzin met
+// een cijfer. Er worden er altijd precies 12 willekeurig uit getrokken.
+const statBanks: (() => string)[] = [
+  () => `Aantal seconden dat een speler binnen reguliere speeltijd water ging drinken: ${between(3, 247)}.`,
+  () => `Keren dat iemand "sorry" zei tegen de cornervlag: ${between(2, 19)}.`,
+  () => `Totale tijd besteed aan het strikken van schoenveters: ${between(1, 6)} min ${between(0, 59)} sec.`,
+  () => `Grassprieten persoonlijk beledigd: ${between(140, 9100)}.`,
+  () => `Aantal keer dat de keeper omhoog staarde zonder reden: ${between(4, 38)}.`,
+  () => `High-fives geweigerd op het middenveld: ${between(0, 11)}.`,
+  () => `Seconden oogcontact met de assistent-scheidsrechter: ${between(2, 88)}.`,
+  () => `Keren dat een speler vergat in welk land hij stond: ${between(1, 7)}.`,
+  () => `Diepe zuchten op de reservebank, totaal: ${between(12, 204)}.`,
+  () => `Aantal keer dat de bal werd uitgescholden: ${between(3, 27)}.`,
+  () => `Stappen achteruit gezet zonder enige aanleiding: ${between(40, 612)}.`,
+  () => `Keren dat iemand deed alsof hij telefonisch werd opgeroepen: ${between(1, 9)}.`,
+  () => `Geeuwen tijdens een dreigende aanval: ${between(2, 22)}.`,
+  () => `Seconden besteed aan het bewonderen van de eigen schaduw: ${between(5, 130)}.`,
+  () => `Aantal keer dat het doelnet werd geknuffeld na een goal: ${between(1, 14)}.`,
+  () => `Verdwaalde gedachten over het avondeten, geregistreerd: ${between(6, 41)}.`,
+  () => `Tijd gebukt om één specifieke graspol te bestuderen: ${between(8, 95)} sec.`,
+  () => `Keren dat een speler naar de verkeerde tribune zwaaide: ${between(1, 12)}.`,
+  () => `Seconden besteed aan het rechttrekken van de sokken: ${between(11, 176)}.`,
+  () => `Aantal niespauzes binnen het strafschopgebied: ${between(0, 6)}.`,
+  () => `Keren dat de scheidsrechter aan zijn eigen fluitje rook: ${between(1, 8)}.`,
+  () => `Onbedoelde aaibewegingen over de bal: ${between(3, 29)}.`,
+  () => `Aantal keer dat iemand "wacht, welke helft is dit?" vroeg: ${between(1, 10)}.`,
+  () => `Totale tijd zoekend naar de bal in de eigen broekzak: ${between(4, 52)} sec.`,
+  () => `Keren dat een verdediger een meeuw probeerde te dekken: ${between(0, 5)}.`,
+  () => `Aantal denkbeeldige doelpunten gevierd: ${between(2, 17)}.`,
 ];
+
+/** Trek precies `n` unieke onzin-statistieken (default 12). */
+function drawStats(n = 12): string[] {
+  const banks = [...statBanks];
+  const out: string[] = [];
+  while (out.length < n && banks.length) {
+    out.push(banks.splice(Math.floor(rng() * banks.length), 1)[0]());
+  }
+  return out;
+}
 
 export function generateChampion(
   answers: Record<string, string>,
@@ -79,11 +109,7 @@ export function generateChampion(
   const vibeList = Object.values(answers);
   const vibe = vibeList.length ? pick(vibeList) : "ondefinieerbaar";
 
-  const banks = [...statBanks];
-  const fabricatedStats: string[] = [];
-  for (let i = 0; i < 4 && banks.length; i++) {
-    fabricatedStats.push(banks.splice(Math.floor(rng() * banks.length), 1)[0]());
-  }
+  const fabricatedStats = drawStats(12);
 
   return {
     champion,
