@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "Dropshipping Detector",
+  "version": "0.1.0",
+  "description": "Heuristically flags online stores that look like dropshipping operations. Runs entirely in your browser — no data leaves your machine.",
+  "permissions": ["storage", "activeTab", "scripting"],
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "action": {
+    "default_title": "Dropshipping Detector",
+    "default_popup": "src/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["src/detector.js", "src/content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
